@@ -111,6 +111,11 @@ Load the supervised, MoCo, and SwaV ResNet-50 checkpoints pretrained on ImageNet
 
 **Why this works:** each encoder uses the same architecture but differs in pretraining objective, which makes the transfer comparison cleaner and much more compute-efficient than training all encoders from scratch.
 
+Checkpoints chosen:
+1. Supervised: torchvision ResNet50_Weights.IMAGENET1K_V2
+2. MoCo: official moco_v2_800ep_pretrain.pth.tar
+3. SwaV: official swav_800ep_pretrain.pth.tar
+
 ### Stage 2 - Train the downstream classifier with linear probing
 
 Freeze each encoder and train only a small linear classification head on STL-10.

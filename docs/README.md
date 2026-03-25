@@ -33,11 +33,3 @@ For each stage, check the following files for more details:
 3. `04-trainprobes.md`
 4. `05-06-explainability.md`
 5. `07-eval-explain.md`
-
-## How this maps to `plan.md`
-
-- The transfer-learning comparison remains centered on fixed pretrained `ResNet-50` encoders and frozen linear probes.
-- The unlabeled STL-10 split is excluded from the main pipeline.
-- Explainability is evaluated on a fixed test subset with predicted-class targets.
-- Grad-CAM uses `encoder.layer4[-1]`.
-- Insertion/deletion AUC uses one shared perturbation protocol across all encoder conditions.
