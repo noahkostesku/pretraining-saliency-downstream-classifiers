@@ -17,7 +17,7 @@ cv/
 ├── plan.md                                # High-level study design and experimental framing
 ├── pyproject.toml                         # Python package metadata and dependencies
 ├── main.py                                # Minimal entrypoint; can later dispatch CLI tasks
-├── impl-stages/
+├── docs/
 │   ├── index.md                           # Stage index and concrete scaffold reference
 │   ├── 01-encoder-prep.md                 # Detailed notes for encoder loading and checkpoint provenance
 │   ├── 02-03-downstream-trainings-and-split.md  # STL-10 split protocol and shared wrapper design
@@ -29,7 +29,10 @@ cv/
 ├── src/
 │   └── cv/
 │       ├── __init__.py                    # Package marker
-│       ├── config.py                      # Shared config dataclasses and path helpers
+│       ├── config/
+│       │   ├── __init__.py                # Centralized config exports
+│       │   ├── base.py                    # Shared path and root configuration
+│       │   └── encoders.py                # Stage-1 checkpoint configuration defaults
 │       ├── constants.py                   # Global constants like class counts and default seeds
 │       ├── transforms.py                  # Shared torchvision transform builders
 │       ├── utils/
@@ -73,7 +76,7 @@ cv/
 │           ├── bootstrap.py               # Bootstrap confidence interval utilities
 │           └── summarize.py               # Aggregate per-seed and per-condition result tables
 ├── scripts/
-│   ├── make_splits.py                     # Create and save fixed STL-10 train/val split indices
+│   ├── make_splits.py                     # Makes and saves fixed STL-10 train/val split indices
 │   ├── inspect_encoders.py                # Sanity-check checkpoint loading and feature shapes
 │   ├── train_linear_probe.py              # Train one frozen linear probe run for one condition and seed
 │   ├── run_probe_grid.py                  # Launch all encoder/seed probe runs
@@ -116,7 +119,8 @@ cv/
 - `src/cv/data/stl10.py` # STL-10 dataset and transforms
 - `src/cv/data/splits.py` # fixed stratified split creation/loading
 - `src/cv/models/downstream.py` # shared downstream model wrapper
-- `src/cv/config.py` # reusable experiment configs
+- `src/cv/config/base.py` # reusable project and path configs
+- `src/cv/config/encoders.py` # stage-1 checkpoint defaults
 - `scripts/make_splits.py` # materialize and save split indices
 
 ## Stage 4 - Frozen probe training
