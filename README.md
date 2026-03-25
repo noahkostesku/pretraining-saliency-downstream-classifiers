@@ -35,7 +35,6 @@ cv/
 │       │   ├── __init__.py                # Centralized config exports
 │       │   ├── base.py                    # Shared path and root configuration
 │       │   └── encoders.py                # Stage-1 checkpoint configuration defaults
-│       ├── constants.py                   # Global constants like class counts and default seeds
 │       ├── transforms.py                  # Shared torchvision transform builders
 │       ├── utils/
 │       │   ├── __init__.py                # Utility package marker
@@ -97,9 +96,6 @@ cv/
 │   ├── raw/                               # Downloaded STL-10 files
 │   ├── processed/                         # Cached processed outputs if needed
 │   └── external/                          # Optional external checkpoint files
-└── reports/
-    ├── figures/                           # Plots and visualizations for the write-up
-    └── tables/                            # Final comparison tables for the paper
 ```
 
 ## Stage 1 - Encoder preparation

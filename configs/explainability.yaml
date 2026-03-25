@@ -1,8 +1,0 @@
-# Fixed evaluation subset and perturbation protocol settings.
-target_score: predicted_class_on_original_image
-gradcam_target_layer: encoder.layer4[-1]
-eval_subset_size: 128
-restrict_to_correct_predictions: false
-mask_baseline: zeros
-patch_size: 16
-num_steps: 20
