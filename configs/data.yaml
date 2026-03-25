@@ -1,0 +1,6 @@
+# STL-10 preprocessing and split settings.
+dataset: stl10
+image_size: 224
+val_fraction: 0.2
+split_seed: 7
+use_unlabeled_split: false

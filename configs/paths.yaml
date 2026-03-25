@@ -1,0 +1,5 @@
+# Root paths for datasets, checkpoints, and generated artifacts.
+project_root: .
+data_root: data
+artifacts_root: artifacts
+reports_root: reports
