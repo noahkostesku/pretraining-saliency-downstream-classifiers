@@ -18,14 +18,16 @@ cv/
 ├── pyproject.toml                         # Python package metadata and dependencies
 ├── main.py                                # Minimal entrypoint; can later dispatch CLI tasks
 ├── docs/
-│   ├── index.md                           # Stage index and concrete scaffold reference
-│   ├── 01-encoder-prep.md                 # Detailed notes for encoder loading and checkpoint provenance
+│   ├── README.md                          # Stage execution order and docs guide
 │   ├── 02-03-downstream-trainings-and-split.md  # STL-10 split protocol and shared wrapper design
 │   ├── 04-trainprobes.md                  # Frozen linear-probe training plan
 │   ├── 05-06-explainability.md            # Grad-CAM and Occlusion generation plan
 │   ├── 07-eval-explain.md                 # Insertion/deletion AUC evaluation plan
 │   ├── 08-opt-fine-tuning.md              # Optional limited fine-tuning ablation notes
-│   └── 09-gradCam++.md                    # Optional Grad-CAM++ extension notes
+│   ├── 09-gradCam++.md                    # Optional Grad-CAM++ extension notes
+│   └── stage01/
+│       ├── 01-encoder-prep.md             # Stage-1 detailed implementation checklist
+│       └── results.md                     # Stage-1 notes/results log
 ├── src/
 │   └── cv/
 │       ├── __init__.py                    # Package marker
@@ -54,7 +56,7 @@ cv/
 │       │   ├── swav.py                    # SwaV ResNet-50 checkpoint loader
 │       │   └── wrapper.py                 # Unified encoder wrapper exposing pooled 2048-D features
 │       ├── models/
-│       │   ├── __init__.py                # Model package marker
+│       │   ├── __init__.py                
 │       │   ├── linear_probe.py            # Frozen encoder + linear head model definition
 │       │   └── downstream.py              # Shared downstream wrapper with freeze controls
 │       ├── train/
@@ -63,34 +65,29 @@ cv/
 │       │   ├── evaluate.py                # Accuracy evaluation utilities
 │       │   └── metrics.py                 # Top-1 accuracy and summary aggregation helpers
 │       ├── explain/
-│       │   ├── __init__.py                # Explainability package marker
-│       │   ├── gradcam.py                 # Grad-CAM generation using encoder.layer4[-1]
-│       │   ├── occlusion.py               # Occlusion map generation with fixed masking settings
-│       │   ├── targets.py                 # Predicted-class target score definition
-│       │   └── saliency_io.py             # Save/load helpers for HxW saliency maps and metadata
+│       │   ├── __init__.py                
+│       │   ├── gradcam.py                 # Grad-CAM
+│       │   ├── occlusion.py               # Occlusion map 
+│       │   ├── targets.py                 # target score defs for prediction class 
+│       │   └── saliency_io.py             # helpers 
 │       └── analysis/
-│           ├── __init__.py                # Analysis package marker
-│           ├── curves.py                  # Insertion/deletion curve construction helpers
-│           ├── insertion_deletion.py      # Shared perturbation implementation
-│           ├── auc.py                     # Curve integration helpers built on numpy/sklearn
-│           ├── bootstrap.py               # Bootstrap confidence interval utilities
-│           └── summarize.py               # Aggregate per-seed and per-condition result tables
+│           ├── __init__.py                
+│           ├── curves.py                  # IAUC/DAUC
+│           ├── insertion_deletion.py      # perturbation helper 
+│           ├── auc.py                     # auc plot helper 
+│           ├── bootstrap.py               # bootstrap
+│           └── summarize.py               # aggregate results 
 ├── scripts/
-│   ├── make_splits.py                     # Makes and saves fixed STL-10 train/val split indices
-│   ├── inspect_encoders.py                # Sanity-check checkpoint loading and feature shapes
-│   ├── train_linear_probe.py              # Train one frozen linear probe run for one condition and seed
-│   ├── run_probe_grid.py                  # Launch all encoder/seed probe runs
-│   ├── summarize_probe_results.py         # Aggregate accuracy mean +- std across seeds
-│   └── export_eval_subset.py              # Sample and save the fixed explanation evaluation subset
+│   ├── make_splits.py                     # for STL-10 train/val split indices
+│   ├── inspect_encoders.py                # test encoders 
+│   ├── train_linear_probe.py              # training for linear probing 
+│   ├── run_probe_grid.py                  # launch all encoder/seed probe runs
+│   ├── summarize_probe_results.py         # aggregate accuracy mean +- std across seeds
+│   └── export_eval_subset.py              # sample and save the fixed explanation evaluation subset
 ├── notebooks/
 │   ├── 05_generate_explanations.ipynb     # Generate Grad-CAM and Occlusion maps for saved models
 │   ├── 06_explainability_qc.ipynb         # Visual quality checks on saliency maps and metadata
 │   └── 07_eval_explanations.ipynb         # Compute insertion/deletion AUC and summarize results
-├── configs/
-│   ├── paths.yaml                         # Root paths for data, artifacts, and checkpoints
-│   ├── data.yaml                          # STL-10 preprocessing and split settings
-│   ├── probes.yaml                        # Shared linear-probe hyperparameters
-│   └── explainability.yaml                # Fixed evaluation subset and perturbation protocol settings
 ├── artifacts/
 │   ├── splits/                            # Saved train/val indices and explanation subset ids
 │   ├── checkpoints/                       # Saved probe model checkpoints by condition and seed
@@ -107,11 +104,19 @@ cv/
 
 ## Stage 1 - Encoder preparation
 
-- `src/cv/encoders/registry.py` # central mapping from condition name to loader
-- `src/cv/encoders/supervised.py` # supervised checkpoint loading
-- `src/cv/encoders/moco.py` # MoCo checkpoint loading
-- `src/cv/encoders/swav.py` # SwaV checkpoint loading
-- `src/cv/encoders/wrapper.py` # unified pooled-feature encoder interface
+- `src/cv/encoders/registry.py`:
+    - Interface for loading encoders, maps encoder type loaded to the correct function for loading the models
+    - use `load_encoder` from here to load an encoder wrapped in `EnocderWrapper` interface
+- `src/cv/encoders/supervised.py`:
+    - loads ResNet50 baseline encoder (uses torchvision weights and removes classifier head, wraps backbone and returns metadata and preprocess config), used through registry.py if condition is supervised.
+- `src/cv/encoders/moco.py`:
+    - loads MoCo ResNet50 checkpoint from config and preps the encoder for downstream training 
+- `src/cv/encoders/swav.py`:
+    - same as moco.py but for SwaV
+- `src/cv/encoders/wrapper.py`:
+    - interface for using encoders after loading them (freeze(), gradcam_target_layer)
+- `src/cv/config/encoders.py`: 
+    - defines checkpoint configs (torchvision weight enum, local MoCo checkpoint path, SwaV checkpoint path, URLs for downloading the models, remote download boolean), used for changing checkpoint, loader files read from this file for checkpointing config 
 - `scripts/inspect_encoders.py` # one-shot shape and loading sanity checks
 
 ## Stages 2-3 - Split protocol and shared downstream setup
@@ -159,3 +164,4 @@ cv/
 * We used `.py` files for all reusable logic, dataset handling, model loading, training, and metric computation. 
 * Notebooks were used only as orchestration and inspection layers for stages 5-7, and we imported Python modules into the notebook for ablation studies and explainability analysis.
 * We saved any notebook-produced plots and images to `artifacts/saliency/` and `artifacts/metrics/` so results stay reproducible.
+* The active config source of truth is `src/cv/config/`; root-level `configs/*.yaml` are legacy placeholders and can be removed once no longer needed for documentation.
