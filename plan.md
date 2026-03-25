@@ -297,6 +297,18 @@ This stage produces explanation maps for the final downstream model.
 
 The key design choice is that all methods are converted into the same `H x W` map format so they can be compared under the same evaluation protocol.
 
+### Target score definition
+
+Explanations and explanation AUC metrics are computed with respect to the model's predicted class on the original unmodified image.
+
+### Grad-CAM target layer
+
+Use `encoder.layer4[-1]` as the Grad-CAM target layer.
+
+### Explanation evaluation subset
+
+Use a fixed subset of STL-10 test images, sampled once and reused across all encoder conditions and seeds. This subset may optionally be restricted to correctly classified images if that rule is applied consistently across all conditions.
+
 ---
 
 ## Experiment Diagram 5 - Explanation Evaluation Metrics
@@ -332,6 +344,10 @@ These are not explanation methods themselves. They are **metrics used to score e
 * both metrics quantify **faithfulness to model behavior under the chosen perturbation procedure**
 
 These metrics do not establish semantic truth and should not be interpreted as direct evidence of what the model "really understands."
+
+### Perturbation protocol held constant across conditions
+
+The fixed masking baseline, patch resolution, ranking procedure, and insertion / deletion step schedule are shared across all encoder conditions.
 
 ---
 
