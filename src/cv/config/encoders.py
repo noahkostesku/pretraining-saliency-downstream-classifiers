@@ -11,7 +11,7 @@ SUPERVISED_WEIGHT_ID = "ResNet50_Weights.IMAGENET1K_V2"
 
 MOCO_V2_800EP_URL = (
     "https://dl.fbaipublicfiles.com/moco/moco_checkpoints/"
-    "moco_v2_800ep_pretrain.pth.tar"
+    "moco_v2_800ep/moco_v2_800ep_pretrain.pth.tar"
 )
 SWAV_800EP_URL = (
     "https://dl.fbaipublicfiles.com/deepcluster/swav_800ep_pretrain.pth.tar"

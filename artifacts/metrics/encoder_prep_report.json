@@ -31,7 +31,81 @@
       },
       "checks": {
         "feature_shape": [
-          1,
+          2,
+          2048
+        ],
+        "feature_dim": 2048,
+        "gradcam_layer_type": "Bottleneck",
+        "encoder_frozen": true
+      }
+    },
+    {
+      "condition": "moco",
+      "metadata": {
+        "condition": "moco",
+        "architecture": "ResNet-50",
+        "pretraining_source": "ImageNet-1K",
+        "pretraining_objective": "MoCo v2 contrastive self-supervision",
+        "checkpoint_origin": "local file",
+        "checkpoint_id": "/Users/tlam/cv/data/external/moco_v2_800ep_pretrain.pth.tar",
+        "feature_dim": 2048,
+        "gradcam_target_layer": "encoder.layer4[-1]",
+        "notes": "Encoder keys remapped from MoCo checkpoint prefixes."
+      },
+      "preprocess_config": {
+        "image_size": 224,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      },
+      "checks": {
+        "feature_shape": [
+          2,
+          2048
+        ],
+        "feature_dim": 2048,
+        "gradcam_layer_type": "Bottleneck",
+        "encoder_frozen": true
+      }
+    },
+    {
+      "condition": "swav",
+      "metadata": {
+        "condition": "swav",
+        "architecture": "ResNet-50",
+        "pretraining_source": "ImageNet-1K",
+        "pretraining_objective": "SwaV self-supervised clustering",
+        "checkpoint_origin": "local file",
+        "checkpoint_id": "/Users/tlam/cv/data/external/swav_800ep_pretrain.pth.tar",
+        "feature_dim": 2048,
+        "gradcam_target_layer": "encoder.layer4[-1]",
+        "notes": "Projection/prototype heads are dropped during key remapping."
+      },
+      "preprocess_config": {
+        "image_size": 224,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      },
+      "checks": {
+        "feature_shape": [
+          2,
           2048
         ],
         "feature_dim": 2048,

@@ -79,6 +79,7 @@ cv/
 ├── scripts/
 │   ├── make_splits.py                     # for STL-10 train/val split indices
 │   ├── inspect_encoders.py                # test encoders 
+│   ├── prepare_encoders.py                # download/prepare checkpoints, then run inspection
 │   ├── train_linear_probe.py              # training for linear probing 
 │   ├── run_probe_grid.py                  # launch all encoder/seed probe runs
 │   ├── summarize_probe_results.py         # aggregate accuracy mean +- std across seeds
@@ -113,7 +114,10 @@ cv/
     - interface for using encoders after loading them (freeze(), gradcam_target_layer)
 - `src/cv/config/encoders.py`: 
     - defines checkpoint configs (torchvision weight enum, local MoCo checkpoint path, SwaV checkpoint path, URLs for downloading the models, remote download boolean), used for changing checkpoint, loader files read from this file for checkpointing config 
-- `scripts/inspect_encoders.py` # one-shot shape and loading sanity checks
+- `scripts/prepare_encoders.py`:
+    - one-time setup script for fresh clones; explicitly downloads MoCo/SwaV checkpoints into `data/external/` using URLs in `src/cv/config/encoders.py`, warms supervised weights, then runs inspection
+- `scripts/inspect_encoders.py`:
+    - one-shot shape and loading sanity checks
 
 ## Stages 2-3 - Split protocol and shared downstream setup
 
@@ -133,6 +137,13 @@ cv/
 - `scripts/train_linear_probe.py` # single-run training entrypoint
 - `scripts/run_probe_grid.py` # batch launcher across conditions/seeds
 - `scripts/summarize_probe_results.py` # mean +- std aggregation
+
+Before running probe training on a fresh clone, make sure encoder checkpoints exist in `data/external/`.
+If they are missing, run:
+
+```bash
+uv run python scripts/prepare_encoders.py
+```
 
 ## Stages 5-6 - Explainability generation
 
