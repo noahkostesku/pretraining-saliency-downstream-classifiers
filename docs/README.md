@@ -6,7 +6,7 @@ The current concrete scaffolding focuses on the core pipeline:
 4. explainability generation
 5. explanation faithfulness evaluation
 
-Stage 8 remains optional. Stage 9 is now only for supplemental diagnostics after the core explainability pipeline is complete.
+Stage 8 remains optional. Stage 9 is mandatory and runs after the core explainability pipeline is complete.
 
 The main study now assumes the following fixed defaults unless a stage file states otherwise:
 
@@ -32,7 +32,7 @@ The main study now assumes the following fixed defaults unless a stage file stat
 
 `08-opt-fine-tuning.md`: Covers the limited fine-tuning ablation for after the basic training stages are done.
 
-`09-gradCam++.md`: Covers optional supplemental diagnostics that build on top of the already-required Grad-CAM++ pipeline.
+`09-gradCam++.md`: Covers mandatory Grad-CAM++ diagnostics that build on top of the core explainability pipeline and report whether conclusions change.
 
 ## Execution Order
 
@@ -43,3 +43,4 @@ For each stage, check the following files for more details:
 3. `04-trainprobes.md`
 4. `05-06-explainability.md`
 5. `07-eval-explain.md`
+6. `09-gradCam++.md`

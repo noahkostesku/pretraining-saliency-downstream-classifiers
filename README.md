@@ -24,7 +24,7 @@ cv/
 │   ├── 05-06-explainability.md            # Grad-CAM and Occlusion generation plan
 │   ├── 07-eval-explain.md                 # Insertion/deletion AUC evaluation plan
 │   ├── 08-opt-fine-tuning.md              # Optional limited fine-tuning ablation notes
-│   ├── 09-gradCam++.md                    # Optional Grad-CAM++ extension notes
+│   ├── 09-gradCam++.md                    # Grad-CAM++ diagnostics plan
 │   └── stage01/
 │       ├── 01-encoder-prep.md             # Stage-1 detailed implementation checklist
 │       └── results.md                     # Stage-1 notes/results log
@@ -162,21 +162,27 @@ uv run python scripts/make_splits.py --overwrite
 uv run python scripts/make_splits.py --split-seed 42 --val-ratio 0.2
 ```
 
-Outputs
+Outputs:
 - `artifacts/splits/stl10_train_indices.json`
 - `artifacts/splits/stl10_val_indices.json`
 - `artifacts/splits/stl10_split_metadata.json`
 
+## Stage 4 - Linear Probe Training 
 
-## Stage 4 - Frozen probe training
-
-- `src/cv/models/linear_probe.py` # linear probe model definition
-- `src/cv/train/trainer.py` # train/validate loop
-- `src/cv/train/evaluate.py` # test-set evaluation
-- `src/cv/train/metrics.py` # accuracy computation and summaries
-- `scripts/train_linear_probe.py` # single-run training entrypoint
-- `scripts/run_probe_grid.py` # batch launcher across conditions/seeds
-- `scripts/summarize_probe_results.py` # mean +- std aggregation
+- `src/cv/models/linear_probe.py`
+    - Linear probe model definition
+- `src/cv/train/trainer.py` 
+    - Train/validate loop code definition 
+- `src/cv/train/evaluate.py`
+    - Test-set evaluation
+- `src/cv/train/metrics.py` 
+    - Top 1 helpers and condition-level mean/std aggregation 
+- `scripts/train_linear_probe.py` 
+    - One condition + one seed run entrypoint 
+- `scripts/run_probe_grid.py`
+    - Runs all training recipes for each encoder + setup
+- `scripts/summarize_probe_results.py` 
+    - util helper for writing summary for training results; TODO: port this to notebook
 
 Before running probe training on a fresh clone, make sure encoder checkpoints exist in `data/external/`.
 If they are missing, run:
