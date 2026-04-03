@@ -119,14 +119,54 @@ cv/
 - `scripts/inspect_encoders.py`:
     - one-shot shape and loading sanity checks
 
-## Stages 2-3 - Split protocol and shared downstream setup
+## Stages 2-3 - Data splits, Shared downstream setup config 
 
-- `src/cv/data/stl10.py` # STL-10 dataset and transforms
-- `src/cv/data/splits.py` # fixed stratified split creation/loading
-- `src/cv/models/downstream.py` # shared downstream model wrapper
-- `src/cv/config/base.py` # reusable project and path configs
+- `src/cv/data/stl10.py`:
+    - Loads STL-10 splits, validates the split names, prepares for label extraction and builds the fixed index train/val/test datasets with shared transforms
+- `src/cv/data/splits.py` 
+    - creates and reloads the stratified splits, persist indices + metadata under `artifacts/splits`
+- `src/cv/models/downstream.py` 
+    - downstream wrappe rclass (encoder -> 2048D -> classifier), frozen probe config, full train random init, layer4 fine tuning ablation modes for all 4 methods 
+- `src/cv/config/base.py` 
+    - project configs and output paths 
 - `src/cv/config/encoders.py` # stage-1 checkpoint defaults
-- `scripts/make_splits.py` # materialize and save split indices
+    - default supervised/MoCo/SwaV checkpoint IDs and configs
+- `src/cv/transforms.py`
+    - preprocessing pipeline for STL-10 data 
+- `src/cv/utils/io.py` 
+    - IO helper utils 
+- `src/cv/utils/seed.py`
+    - seed config utils
+- `scripts/make_splits.py` 
+    - for re-using fixed splits 
+
+### CLI command for making data splits for reproducing:
+
+1. Create fixed split artifacts (downloads STL-10 if missing):
+```bash
+uv run python scripts/make_splits.py --download
+```
+
+2. Re-run safely (reuses existing artifacts, does not resample):
+```
+uv run python scripts/make_splits.py
+```
+
+3. Force regeneration (same protocol, useful if you want to refresh files):
+```
+uv run python scripts/make_splits.py --overwrite
+```
+
+4. Optional args (below are the default vals for these flags):
+```
+uv run python scripts/make_splits.py --split-seed 42 --val-ratio 0.2
+```
+
+Outputs
+- `artifacts/splits/stl10_train_indices.json`
+- `artifacts/splits/stl10_val_indices.json`
+- `artifacts/splits/stl10_split_metadata.json`
+
 
 ## Stage 4 - Frozen probe training
 
