@@ -14,7 +14,7 @@ Generate explanation maps from the trained downstream models under one fixed pro
 
 ### Target score definition
 
-Compute explanations with respect to the model's predicted class on the original unmodified image.
+Compute explanations with respect to the logit of the model's predicted class on the original unmodified image.
 
 ### Grad-CAM target layer
 
@@ -22,7 +22,8 @@ Use `encoder.layer4[-1]` as the target layer.
 
 ### Explanation evaluation subset
 
-- sample a fixed subset of STL-10 test images once
+- sample a fixed stratified subset of `200` STL-10 test images once (`20` images per class)
+- use explanation-subset seed `42`
 - reuse the same subset across all encoder conditions and all seeds
 - do not restrict the subset to correctly classified images
 - keep the exact same image ids for every condition, including random-init
@@ -30,23 +31,31 @@ Use `encoder.layer4[-1]` as the target layer.
 
 ### Shared output format
 
-- convert each explanation to a common `H x W` saliency map
-- resize and normalize maps consistently
+- convert each explanation to a common `224 x 224` saliency map
+- resize every map into image space and min-max normalize each map to `[0, 1]`
+- if a map is constant after resizing, save it as all zeros
 - save maps in a reproducible numeric format such as `.npy`
 
 ## Grad-CAM implementation tasks
 
 - hook activations and gradients from `encoder.layer4[-1]`
 - generate one heatmap per image and target class
-- upsample to the common image-space resolution
-- normalize with one consistent rule across all conditions
+- upsample to the common `224 x 224` image-space resolution
+- apply the same postprocessing and `[0, 1]` normalization rule across all conditions
 
 ## Occlusion implementation tasks
 
-- define patch size once for the whole study
-- define masking baseline once for the whole study
+- use non-overlapping `16 x 16` image-space patches
+- use a Gaussian-blurred version of the image as the masking baseline
 - score the same predicted-class target used by Grad-CAM
 - export the final map to the same `H x W` format
+
+## Seed handling for explanations
+
+- generate explanations for every seed-specific best checkpoint from Stage 4
+- do not choose a single "representative" seed for the main analysis
+- keep explanation artifacts separated by condition, seed, method, and image id
+- summarize explanation quality at the seed level first, then across seeds in Stage 7
 
 ## Output organization
 
@@ -80,6 +89,7 @@ Within each condition, keep outputs separated by seed, method, and image id.
 - Grad-CAM++ maps exist for all required models on the fixed evaluation subset
 - Occlusion maps exist for the same fixed evaluation subset
 - all maps use the same target score definition and save format
+- all three training seeds per condition have explanation artifacts
 - outputs are organized so downstream AUC evaluation can read them directly
 
 ## Interpretation note

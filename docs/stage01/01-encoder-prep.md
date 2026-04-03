@@ -28,7 +28,7 @@ The random-init baseline uses the same `ResNet-50` architecture but is initializ
 - keep the backbone family fixed at `ResNet-50`
 - use public pretrained checkpoints only
 - expose the same pooled feature dimension `2048` for all conditions
-- document any checkpoint-specific preprocessing requirements and resolve them into one shared downstream preprocessing pipeline if possible
+- document any checkpoint-specific preprocessing requirements, but use one shared downstream preprocessing pipeline for the main study so all conditions see the same input transform
 
 ## Implementation tasks
 
@@ -65,14 +65,24 @@ swav
 
 - verify encoder parameters can be globally frozen with `requires_grad=False`
 - ensure batch norm and evaluation mode behavior are handled consistently during probing
-- define whether probing uses `model.eval()` for the encoder throughout training and document that choice
+- probing uses `encoder.eval()` for the full run so BatchNorm running statistics remain frozen
+- train only the classifier head during frozen probing
 
-### 5. Sanity checks
+### 5. Shared preprocessing decision
+
+- use one simple shared preprocessing pipeline for all encoder conditions in the main study
+- target input size: `224 x 224`
+- train transform: `RandomResizedCrop(224)`, `RandomHorizontalFlip()`, `ToTensor()`, `Normalize(ImageNet mean/std)`
+- validation and test transform: `Resize(256)`, `CenterCrop(224)`, `ToTensor()`, `Normalize(ImageNet mean/std)`
+- if a source checkpoint was originally trained with a slightly different recipe, record that fact in metadata, but do not switch transforms by condition in the main comparison
+
+### 6. Sanity checks
 
 - run a single batch through each encoder
 - verify output shape is `[batch, 2048]` after pooling
 - verify no missing keys or unexpected shape mismatches when loading checkpoints
 - verify `layer4[-1]` exists and is reachable for explanation methods
+- verify a frozen probe run leaves encoder weights and BatchNorm running statistics unchanged
 
 ## Suggested metadata template
 
@@ -93,6 +103,8 @@ notes:
 - all three encoders load successfully
 - all three produce pooled `2048`-D features
 - checkpoint provenance is written down
+- the shared `224 x 224` preprocessing pipeline is fixed for the main study
+- frozen probing behavior is fixed to `encoder.eval()`
 - a shared wrapper exists for downstream training
 
 ## Risks to watch

@@ -19,10 +19,16 @@ This file covers:
 
 ### Main dataset usage
 
-- training data: official labeled STL-10 `train`, minus a fixed validation holdout
-- validation data: fixed stratified subset from labeled STL-10 `train`
+- training data: `4000` images from the official labeled STL-10 `train` split
+- validation data: `1000` images from the official labeled STL-10 `train` split
 - test data: official labeled STL-10 `test`
 - unlabeled STL-10 split: not used in the main study
+
+### Fixed split decision
+
+- split the labeled STL-10 `train` split with a stratified `80/20` rule
+- use split seed `42`
+- with STL-10's class balance, this yields `400` training images and `100` validation images per class
 
 ### Dataset citation requirement
 
@@ -41,14 +47,17 @@ This file covers:
 
 - `splits/stl10_train_indices.json`
 - `splits/stl10_val_indices.json`
-- a short note describing the stratification rule and random seed used to create the split
+- `splits/stl10_split_metadata.json`
+- a short note describing the `80/20` stratification rule and split seed `42`
 
 ## Shared preprocessing rules
 
-- use identical image resizing, cropping, normalization, and tensor conversion for all encoder conditions
+- use identical image resizing, cropping, normalization, and tensor conversion for all encoder conditions, including `random_init`
 - use identical train-time augmentation for all encoder conditions
 - use deterministic validation and test preprocessing
-- document the final image size expected by the downstream wrapper
+- final image size for the downstream wrapper is `224 x 224`
+- train transform: `RandomResizedCrop(224)`, `RandomHorizontalFlip()`, `ToTensor()`, `Normalize(ImageNet mean/std)`
+- validation and test transform: `Resize(256)`, `CenterCrop(224)`, `ToTensor()`, `Normalize(ImageNet mean/std)`
 
 ## Downstream wrapper
 
@@ -63,16 +72,27 @@ image -> encoder -> pooled 2048-D feature -> classifier
 - expose the encoder and classifier as separate modules
 - support condition names `supervised`, `moco`, `swav`, and `random_init`
 - support `freeze_encoder=True` for pretrained linear probing
+- when `freeze_encoder=True`, keep the encoder in `eval()` mode for the full run
 - support full-backbone training for the `random_init` condition in the main experiment
 - support `trainable_layer4=True` for the fine-tuning ablation
 - return logits for `10` STL-10 classes
 
 ## Seed protocol
 
-- use at least `3` seeds per condition for the main downstream comparison
+- use exactly `3` training seeds per condition for the main downstream comparison: `0`, `1`, and `2`
 - keep the split fixed across seeds
 - vary initialization of the classifier head and training order via the seed
+- keep the split seed and explanation-subset seed fixed at `42`
 - save per-seed configs and metrics separately
+
+## Hyperparameter selection protocol
+
+- tune hyperparameters using only the fixed `train` and `val` partition
+- never use the test split for hyperparameter selection
+- declare the tuning grid before running the main study
+- use one small shared grid for the frozen-probe conditions `supervised`, `moco`, and `swav`
+- choose one final hyperparameter setting per condition from validation performance, then keep that setting fixed across seeds `0`, `1`, and `2`
+- keep the search narrow so the main comparison remains about encoder quality rather than optimizer exploration
 
 ## Experiment bookkeeping
 
@@ -83,6 +103,7 @@ Each run should record:
 - seed
 - split artifact ids or paths
 - preprocessing config
+- hyperparameter config id
 - trainable parameter setting
 - best validation epoch
 - best validation accuracy
@@ -92,4 +113,6 @@ Each run should record:
 
 - fixed split artifacts exist and are versioned in the project
 - one shared downstream wrapper can instantiate all four main conditions
+- one fixed preprocessing recipe exists for all four conditions
+- one fixed seed policy exists for split generation, model training, and explanation subset sampling
 - one config path can switch between frozen-probe, random-init full training, and limited-fine-tuning modes
