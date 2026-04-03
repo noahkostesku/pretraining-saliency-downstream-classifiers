@@ -62,15 +62,23 @@ For each encoder condition and explanation method, report:
 - mean insertion AUC
 - bootstrap confidence intervals if computed
 - number of evaluated images
+- confirmation that evaluated image ids and counts are identical across all conditions
 
 ## Sanity checks
 
 - random saliency should perform worse than useful explanations
 - a constant map should behave as a weak baseline
 - insertion and deletion should use exactly the same ranked units and target score definition
+- evaluated subset size should match across supervised, MoCo, SwaV, and random-init
+
+## Threats to validity to report
+
+- explanations are evaluated on the model-predicted class for a fixed subset that includes misclassified images
+- this is intentional for cross-condition fairness, especially for random-init, but some maps correspond to incorrect predictions
+- interpret lower-faithfulness behavior in random-init with this limitation in mind
 
 ## Deliverables
 
 - a reproducible AUC evaluation script
 - per-image and aggregated explanation scores
-- comparison-ready tables for supervised, MoCo, and SwaV
+- comparison-ready tables for supervised, MoCo, SwaV, and random-init

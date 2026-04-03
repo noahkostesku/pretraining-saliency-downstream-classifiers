@@ -14,6 +14,8 @@ This stage covers:
 
 It does not train encoders from scratch.
 
+The random-init baseline uses the same `ResNet-50` architecture but is initialized and trained in Stage 4, not prepared from a pretrained checkpoint in this stage.
+
 ## Outputs
 
 - a common encoder-loading interface for all three conditions

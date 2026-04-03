@@ -6,9 +6,8 @@ Generate explanation maps from the trained downstream models under one fixed pro
 
 ## Main method priority
 
-- main explanation method: Grad-CAM
+- main gradient-based methods: Grad-CAM and Grad-CAM++
 - secondary comparison: Occlusion
-- optional extra: Grad-CAM++
 - optional stability analysis: secondary only
 
 ## Fixed protocol decisions
@@ -25,7 +24,9 @@ Use `encoder.layer4[-1]` as the target layer.
 
 - sample a fixed subset of STL-10 test images once
 - reuse the same subset across all encoder conditions and all seeds
-- optionally restrict to correctly classified images, but only if that rule is applied consistently everywhere
+- do not restrict the subset to correctly classified images
+- keep the exact same image ids for every condition, including random-init
+- evaluate explanations on each model's predicted class for every image in the fixed subset
 
 ### Shared output format
 
@@ -56,6 +57,7 @@ artifacts/explanations/
   supervised/
   moco/
   swav/
+  random_init/
 ```
 
 Within each condition, keep outputs separated by seed, method, and image id.
@@ -75,6 +77,12 @@ Within each condition, keep outputs separated by seed, method, and image id.
 ## Deliverables before moving on
 
 - Grad-CAM maps exist for all required models on the fixed evaluation subset
-- Occlusion maps exist if included in the main implementation pass
+- Grad-CAM++ maps exist for all required models on the fixed evaluation subset
+- Occlusion maps exist for the same fixed evaluation subset
 - all maps use the same target score definition and save format
 - outputs are organized so downstream AUC evaluation can read them directly
+
+## Interpretation note
+
+- the fixed subset includes both correct and incorrect predictions by design
+- this keeps the evaluation subset identical across conditions, but some maps will explain wrong predictions

@@ -1,12 +1,12 @@
-# Stage 9 - Optional Grad-CAM++ Extension
+# Stage 9 - Optional Supplemental Grad-CAM++ Diagnostics
 
 ## Purpose
 
-Add Grad-CAM++ as an optional secondary explanation method without changing the main study framing.
+Run supplemental diagnostics on top of the already-required Grad-CAM++ pipeline without changing the main study framing.
 
 ## Priority
 
-This stage is optional and should only happen after the main Grad-CAM and AUC pipeline is working.
+This stage is optional and should only happen after Stages 5-7 are complete for Grad-CAM, Grad-CAM++, and Occlusion.
 
 ## Fixed controls inherited from the main explainability pipeline
 
@@ -18,24 +18,23 @@ This stage is optional and should only happen after the main Grad-CAM and AUC pi
 
 ## Implementation tasks
 
-### 1. Add Grad-CAM++ generation
+### 1. Qualitative side-by-side diagnostics
 
-- use the same target layer `encoder.layer4[-1]`
-- generate one map per evaluation image
-- export maps to the same save format used by other methods
+- compare Grad-CAM and Grad-CAM++ maps on representative correct and incorrect predictions
+- flag cases where Grad-CAM++ materially changes localization or confidence trends
 
-### 2. Evaluate with the same AUC scripts
+### 2. Extended quantitative checks
 
-- run insertion and deletion evaluation without changing perturbation settings
-- aggregate metrics by condition and seed in the same format as other methods
+- run per-class and error-slice summaries in addition to the main aggregate AUC table
+- keep perturbation settings unchanged from the main pipeline
 
-### 3. Compare qualitatively and quantitatively
+### 3. Document when the extension changes interpretation
 
-- check whether Grad-CAM++ supports the same broad conclusions as Grad-CAM
-- note any cases where it materially changes the interpretation
+- state whether supplemental diagnostics reinforce or weaken the core conclusions
+- keep this section secondary to the core cross-condition comparison
 
 ## Deliverables
 
-- Grad-CAM++ saliency maps
-- AUC results under the same evaluation protocol
-- a short note on whether this extension adds value beyond the main Grad-CAM analysis
+- supplemental Grad-CAM++ diagnostic notes
+- optional extended tables or plots linked to the same fixed evaluation subset
+- a short statement on whether diagnostics change the main interpretation
