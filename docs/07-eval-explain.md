@@ -15,7 +15,7 @@ The following choices must be fixed and reused across all conditions:
 - target score: logit of the class predicted on the original unmodified image
 - evaluation image size: `224 x 224`
 - masking baseline: a Gaussian-blurred version of the same resized image
-- patch resolution: non-overlapping `16 x 16` patches
+- patch resolution: `16 x 16` patches with `stride=16`
 - saliency ranking procedure: average saliency within each patch, ranked from highest to lowest
 - insertion step schedule: restore one ranked patch at a time from the original image into the blurred baseline image
 - deletion step schedule: replace one ranked patch at a time in the original image with the corresponding blurred patch

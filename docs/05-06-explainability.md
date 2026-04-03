@@ -45,7 +45,7 @@ Use `encoder.layer4[-1]` as the target layer.
 
 ## Occlusion implementation tasks
 
-- use non-overlapping `16 x 16` image-space patches
+- use `16 x 16` image-space patches with `stride=16`
 - use a Gaussian-blurred version of the image as the masking baseline
 - score the same predicted-class target used by Grad-CAM
 - export the final map to the same `H x W` format

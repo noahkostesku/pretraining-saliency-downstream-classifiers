@@ -19,7 +19,8 @@ All earlier encoder blocks remain frozen.
 
 - keep the same fixed STL-10 split protocol
 - keep the same preprocessing and augmentation
-- keep the same seed count and reporting format as the main study: seeds `0`, `1`, and `2`
+- use a single seed for the ablation to keep this stage lightweight
+- use seed `0` unless there is a documented reason to choose a different fixed seed
 - keep the same validation-based checkpoint selection rule
 - keep this ablation limited in breadth so it does not dominate the study
 
@@ -44,7 +45,7 @@ All earlier encoder blocks remain frozen.
 ### 3. Run the ablation selectively
 
 - prioritize one best checkpoint source per encoder condition
-- use fewer total runs only if budget requires it, and document that reduction
+- run one fine-tuning ablation per encoder condition with the fixed ablation seed
 
 ## Reporting goals
 
@@ -56,5 +57,6 @@ All earlier encoder blocks remain frozen.
 ## Deliverables
 
 - one ablation result group per encoder condition
+- one ablation run per encoder condition using the fixed seed
 - a short comparison table against the main frozen-probe results
 - a clear statement about whether the ablation changes the main story
