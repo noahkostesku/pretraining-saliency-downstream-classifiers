@@ -24,7 +24,7 @@ The main study now assumes the following fixed defaults unless a stage file stat
 
 `02-03-downstream-trainings-and-split.md`: Covers the shared data and model setup before the main experiments. It locks the fixed STL-10 train / validation / test protocol, excludes the unlabeled split from the main study, defines the common preprocessing rules, specifies the shared downstream wrapper used by both probing and fine-tuning, and fixes the seed policy.
 
-`04-trainprobes.md`: Covers the main downstream experiment. It defines frozen linear-probe training for supervised, MoCo, and SwaV plus a fully trained random-init `ResNet-50` baseline, with explicit hyperparameter-selection rules, shared seed handling, checkpoint selection, reporting requirements, and sanity checks.
+`04-trainprobes.md`: Covers the main downstream experiment. It defines frozen linear-probe training for supervised, MoCo, and SwaV plus a fully trained random-init `ResNet-50` baseline, with fixed per-mode training recipes (no hyperparameter search), shared seed handling, checkpoint selection, reporting requirements, and sanity checks.
 
 `05-06-explainability.md`: Covers explanation generation and explanation artifact organization. It sets the target score definition, fixes `encoder.layer4[-1]` as the target layer for Grad-CAM and Grad-CAM++, defines one fixed evaluation subset without correctness filtering, and describes how Grad-CAM, Grad-CAM++, and Occlusion outputs should be saved consistently across conditions and seeds.
 

@@ -15,6 +15,8 @@ Train the main downstream comparison with four conditions under one fixed STL-10
 - random-init condition must be fully trained, not frozen
 - all conditions use the same fixed split and evaluation rules
 - frozen probes keep the encoder in `eval()` mode for the whole run
+- no hyperparameter search is performed
+- training recipes are declared once and reused unchanged across seeds
 
 ## Model settings
 
@@ -37,31 +39,71 @@ Train the main downstream comparison with four conditions under one fixed STL-10
 - same augmentation and preprocessing across all conditions
 - same batch size for all conditions unless a deviation is documented
 - same validation-based checkpoint selection rule across all conditions
-- if optimizer or schedule differs for random-init stability, record and justify it explicitly
+- use one fixed recipe for all pretrained probe conditions
+- use one separate fixed recipe for random-init full training
 
-## Hyperparameter selection protocol
+## Fixed training recipes (no search)
 
-### Frozen probes (`supervised`, `moco`, `swav`)
+### Policy statement
 
-- tune only the classifier-head optimization recipe
-- optimizer: `AdamW`
-- batch size: `64`
-- epoch budget: `50`
-- scheduler: none
-- tune learning rate over `{1e-4, 3e-4, 1e-3}`
-- tune weight decay over `{0.0, 1e-4, 1e-2}`
-- use the same hyperparameter grid for `supervised`, `moco`, and `swav`
-- choose one final setting per condition using validation accuracy only, then rerun or retain the three study seeds with that fixed setting
+- use one identical fixed frozen-probe recipe for `supervised`, `moco`, and `swav`
+- use one separate fixed end-to-end recipe for `random_init`
+- no per-condition or per-seed hyperparameter tuning is allowed
 
-### Random-init condition (`random_init`)
+### Recipe A: `probe_recipe_v1` (frozen probes only)
 
-- optimizer: `SGD` with momentum `0.9`
-- batch size: `64`
-- epoch budget: `100`
-- scheduler: cosine decay
-- weight decay: `1e-4`
-- tune initial learning rate over `{0.03, 0.1}` using validation accuracy only
-- once selected, keep the final recipe fixed across seeds `0`, `1`, and `2`
+Applies unchanged to `supervised`, `moco`, and `swav`.
+
+```yaml
+recipe_id: probe_recipe_v1
+training_mode: frozen_probe
+optimizer: AdamW
+lr: 3e-4
+weight_decay: 1e-4
+betas: [0.9, 0.999]
+scheduler: none
+epochs: 50
+batch_size: 64
+loss: cross_entropy
+label_smoothing: 0.0
+grad_clip_norm: null
+checkpoint_selection: best_val_accuracy
+seeds: [0, 1, 2]
+encoder_requires_grad: false
+encoder_mode_during_training: eval
+classifier_head: Linear(2048, 10)
+```
+
+### Recipe B: `random_init_recipe_v1` (random-init only)
+
+Applies unchanged to `random_init`.
+
+```yaml
+recipe_id: random_init_recipe_v1
+training_mode: full_train_random_init
+optimizer: SGD
+lr: 0.03
+momentum: 0.9
+nesterov: false
+weight_decay: 1e-4
+scheduler: cosine_decay
+epochs: 100
+batch_size: 64
+loss: cross_entropy
+label_smoothing: 0.0
+grad_clip_norm: null
+checkpoint_selection: best_val_accuracy
+seeds: [0, 1, 2]
+encoder_requires_grad: true
+encoder_mode_during_training: train
+classifier_head: Linear(2048, 10)
+```
+
+### Optimization-usage rule
+
+- run the full fixed epoch budget for each mode (`50` for frozen probes, `100` for random-init)
+- do not use patience-based early stopping
+- select the final checkpoint by best validation accuracy within the fixed epoch budget
 
 ## Training loop requirements
 
@@ -72,6 +114,7 @@ Train the main downstream comparison with four conditions under one fixed STL-10
 - attach a randomly initialized linear head
 - train on the fixed STL-10 training split
 - evaluate on the fixed validation split each epoch
+- run the full fixed epoch budget (`50`)
 - save the best checkpoint by validation metric
 - evaluate the selected checkpoint once on the test split
 
@@ -80,6 +123,7 @@ Train the main downstream comparison with four conditions under one fixed STL-10
 - initialize a new `ResNet-50` and set encoder parameters trainable
 - train end-to-end on the same fixed STL-10 training split
 - evaluate on the fixed validation split each epoch
+- run the full fixed epoch budget (`100`)
 - save the best checkpoint by validation metric
 - evaluate the selected checkpoint once on the test split
 
@@ -94,13 +138,13 @@ Train the main downstream comparison with four conditions under one fixed STL-10
 
 - validation top-1 accuracy per seed
 - test top-1 accuracy per seed
-- the selected hyperparameter config per condition
+- fixed recipe id per run (`probe_recipe_v1` or `random_init_recipe_v1`)
 - mean +- std test accuracy across seeds for each condition
 
 ## Suggested run table schema
 
 ```text
-condition | training_mode | seed | best_val_acc | test_acc | best_epoch | checkpoint_path
+condition | training_mode | recipe_id | seed | best_val_acc | test_acc | best_epoch | checkpoint_path
 ```
 
 ## Sanity checks
@@ -117,3 +161,4 @@ condition | training_mode | seed | best_val_acc | test_acc | best_epoch | checkp
 - three seeds per condition: `0`, `1`, and `2`
 - mean +- std top-1 accuracy summary for all four conditions
 - best checkpoints ready for explanation analysis
+- fixed recipe ids recorded for every run

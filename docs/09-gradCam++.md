@@ -1,4 +1,4 @@
-# Stage 9 - Optional Supplemental Grad-CAM++ Diagnostics
+# Stage 9 - Supplemental Grad-CAM++ Diagnostics
 
 ## Purpose
 

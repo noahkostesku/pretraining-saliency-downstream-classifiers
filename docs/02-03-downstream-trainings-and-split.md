@@ -85,14 +85,14 @@ image -> encoder -> pooled 2048-D feature -> classifier
 - keep the split seed and explanation-subset seed fixed at `42`
 - save per-seed configs and metrics separately
 
-## Hyperparameter selection protocol
+## Fixed training-recipe protocol (no search)
 
-- tune hyperparameters using only the fixed `train` and `val` partition
-- never use the test split for hyperparameter selection
-- declare the tuning grid before running the main study
-- use one small shared grid for the frozen-probe conditions `supervised`, `moco`, and `swav`
-- choose one final hyperparameter setting per condition from validation performance, then keep that setting fixed across seeds `0`, `1`, and `2`
-- keep the search narrow so the main comparison remains about encoder quality rather than optimizer exploration
+- no hyperparameter search is used in the main downstream comparison
+- declare and freeze one recipe for pretrained frozen-probe runs: `probe_recipe_v1`
+- declare and freeze one separate recipe for random-init full training: `random_init_recipe_v1`
+- keep both recipes fixed across seeds `0`, `1`, and `2`
+- use validation only for checkpoint selection under the fixed epoch budget
+- do not use the test split for recipe design or model selection
 
 ## Experiment bookkeeping
 
@@ -103,7 +103,7 @@ Each run should record:
 - seed
 - split artifact ids or paths
 - preprocessing config
-- hyperparameter config id
+- recipe id (`probe_recipe_v1` or `random_init_recipe_v1`)
 - trainable parameter setting
 - best validation epoch
 - best validation accuracy
@@ -116,3 +116,4 @@ Each run should record:
 - one fixed preprocessing recipe exists for all four conditions
 - one fixed seed policy exists for split generation, model training, and explanation subset sampling
 - one config path can switch between frozen-probe, random-init full training, and limited-fine-tuning modes
+- two fixed training recipes are defined and versioned by id (`probe_recipe_v1`, `random_init_recipe_v1`)
