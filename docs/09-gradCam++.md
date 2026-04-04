@@ -13,7 +13,9 @@ This stage is mandatory and should run after Stages 5-7 are complete for Grad-CA
 
 ## Fixed controls inherited from the main explainability pipeline
 
-- same evaluation subset
+- same fixed `200`-image artifact subset from Stages 5-6
+- same primary Stage-7 comparison slice: per-seed intersection of correctly classified image ids across compared conditions
+- same supplementary Stage-7 slice: all fixed `200` images
 - same target score definition based on the original-image predicted class
 - same output map resolution and normalization
 - same perturbation evaluation protocol
@@ -35,9 +37,10 @@ This stage is mandatory and should run after Stages 5-7 are complete for Grad-CA
 - required core table: report raw method scores and deltas together for interpretability
 - per-row schema:
   - `condition | seed | gradcam_ins | gradcampp_ins | delta_ins | gradcam_del | gradcampp_del | delta_del`
-- compute per-image deltas between methods on the same image: `delta_insertion = insertion_auc_gradcampp - insertion_auc_gradcam` and `delta_deletion = deletion_auc_gradcampp - deletion_auc_gradcam`
+- compute per-image deltas between methods on the same image in the primary Stage-7 slice: `delta_insertion = insertion_auc_gradcampp - insertion_auc_gradcam` and `delta_deletion = deletion_auc_gradcampp - deletion_auc_gradcam`
 - report seed-level aggregate deltas by condition
 - report condition-level mean delta and seed-level std
+- always report sample counts used for each seed (`n_primary`) and clearly label any supplementary all-200 analysis as secondary
 - optional appendix diagnostics: per-class and error-slice summaries (correct vs incorrect predictions)
 - for per-class and error-slice appendix summaries, always report sample counts `n`
 - suppress or merge appendix slices with low counts (`n < 10`) to avoid unstable comparisons

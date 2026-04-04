@@ -8,6 +8,13 @@ Score explanation maps with insertion and deletion metrics under one shared pert
 
 These metrics evaluate faithfulness to model behavior under the chosen perturbation design. They do not establish semantic truth or full model understanding.
 
+## Evaluation subsets and comparison policy
+
+- Stage 5/6 artifacts are generated on one fixed stratified `200`-image subset (`20` per class)
+- primary cross-condition comparison uses a per-seed intersection of correctly classified images across compared encoder conditions, computed within that fixed subset
+- supplementary comparison uses all fixed `200` images for fairness diagnostics, including misclassified cases
+- always report evaluated image counts for both slices (`n_primary`, `n_all`)
+
 ## Shared perturbation protocol
 
 The following choices must be fixed and reused across all conditions:
@@ -19,77 +26,86 @@ The following choices must be fixed and reused across all conditions:
 - saliency ranking procedure: average saliency within each patch, ranked from highest to lowest
 - insertion step schedule: restore one ranked patch at a time from the original image into the blurred baseline image
 - deletion step schedule: replace one ranked patch at a time in the original image with the corresponding blurred patch
-- target score definition based on the original-image predicted class
+- use the original saliency ranking as fixed input for the full curve; do not recompute saliency after each perturbation step in the main protocol
 
 ## Metric definitions
 
 - deletion AUC: lower is better
 - insertion AUC: higher is better
+- optional diagnostics: confidence drop after top-`k` deletion (for example `10%`, `20%`) and label-flip rate
 
 ## Evaluation procedure
 
-### 1. Load a saved saliency map
+### 1. Load saved saliency maps and metadata
 
-- align it to the evaluation image
-- convert it into ranked `16 x 16` patches using the shared ranking procedure
+- load map, target class, and original-image target logit metadata
+- align maps to the evaluation image and convert each map into ranked `16 x 16` patches
 
-### 2. Run deletion curve
+### 2. Build analysis slices
+
+- primary slice: compute the per-seed intersection of correctly classified image ids across compared encoder conditions
+- supplementary slice: reuse all fixed `200` image ids
+
+### 3. Run deletion curve
 
 - start from the original image
 - remove top-ranked regions according to the shared schedule
-- track the target score after each step
+- track target logit after each step
 - include the untouched original image as the first curve point
 
-### 3. Run insertion curve
+### 4. Run insertion curve
 
-- start from the masked baseline image
+- start from the blurred baseline image
 - add top-ranked regions according to the shared schedule
-- track the target score after each step
+- track target logit after each step
 - include the fully blurred baseline image as the first curve point
 
-### 4. Compute summary metrics
+### 5. Compute per-image outputs
 
-- compute AUC for each curve
-- average per-image AUCs across the fixed `200`-image subset to obtain one seed-level score
-- summarize each condition and method with the mean +- std of the three seed-level scores
+- compute insertion and deletion AUC for each image
+- optionally compute confidence-drop-at-`k` and flip indicators
 
-## Uncertainty reporting
+### 6. Aggregate reporting outputs
 
-- primary paper summary: report the three seed-level means and the condition-level mean +- std across seeds
-- optional appendix summary: bootstrap images within each seed if an interval display is needed
-- if bootstrap is used, use image-level resampling with `1000` resamples and `95%` percentile intervals
-- record the bootstrap procedure clearly anywhere it is reported
+- primary summary: average per-image metrics over the primary intersection slice for each seed
+- supplementary summary: average per-image metrics over the full fixed `200` images for each seed
+- summarize each condition/method with mean +- std across seeds `0`, `1`, and `2`
+
+## Uncertainty and significance reporting
+
+- primary paper summary should use the primary intersection slice
+- for cross-condition comparisons on the primary slice, report paired statistics over per-image AUC deltas
+- recommended options: paired bootstrap confidence intervals (`1000` resamples, `95%` percentile), paired Wilcoxon signed-rank, or paired permutation tests
+- if supplementary all-200 results are shown, label them as secondary diagnostics
 
 ## Comparison outputs
 
 For each encoder condition and explanation method, report:
 
-- seed-level mean deletion AUC for seeds `0`, `1`, and `2`
-- seed-level mean insertion AUC for seeds `0`, `1`, and `2`
-- mean deletion AUC
-- mean insertion AUC
-- mean +- std across the three seeds
-- bootstrap confidence intervals if computed in the appendix
-- number of evaluated images (`200` per seed)
-- confirmation that evaluated image ids and counts are identical across all conditions
+- seed-level mean deletion AUC and insertion AUC for the primary slice
+- seed-level mean deletion AUC and insertion AUC for the all-200 supplementary slice
+- condition-level mean +- std across seeds for both slices
+- evaluated image counts (`n_primary` per seed and `n_all=200`)
+- paired significance outputs used for primary cross-condition comparisons
 
 ## Sanity checks
 
 - random saliency should perform worse than useful explanations
 - a constant map should behave as a weak baseline
 - insertion and deletion should use exactly the same ranked units and target score definition
-- evaluated subset size should match across supervised, MoCo, SwaV, and random-init
-- the same `200` image ids must be reused for every condition and every seed
+- perturbation settings must be identical across supervised, MoCo, SwaV, and random-init
+- primary slice ids must be subsets of the fixed `200` ids
+- supplementary slice must use the same fixed `200` ids for every condition and seed
 
 ## Threats to validity to report
 
-- explanations are evaluated on the model-predicted class for a fixed subset that includes misclassified images
-- this is intentional for cross-condition fairness, especially for random-init, but some maps correspond to incorrect predictions
-- interpret lower-faithfulness behavior in random-init with this limitation in mind
+- primary intersection size can vary by seed and by which conditions are compared
+- supplementary all-200 results include misclassified images by design
+- insertion/deletion evaluates behavioral faithfulness, not semantic correctness
 
 ## Deliverables
 
 - a reproducible AUC evaluation script
 - per-image and aggregated explanation scores
-- per-seed explanation summaries before any cross-seed averaging
-- comparison-ready tables for supervised, MoCo, SwaV, and random-init
+- primary and supplementary per-seed summaries before cross-seed averaging
+- comparison-ready tables for supervised, MoCo, SwaV, and random-init with `n` counts and paired primary-slice statistics

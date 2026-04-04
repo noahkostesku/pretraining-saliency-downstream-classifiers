@@ -143,8 +143,8 @@ Explainability:
 
 ```bash
 uv run python scripts/export_eval_subset.py
-uv run python scripts/generate_explanations.py --device cpu
-uv run python scripts/qc_explanations.py
+uv run python scripts/generate_explanations.py --conditions supervised moco swav random_init --seeds 0 1 2 --methods gradcam gradcampp occlusion --device cpu
+uv run python scripts/qc_explanations.py --conditions supervised moco swav random_init --seeds 0 1 2 --methods gradcam gradcampp occlusion
 ```
 
 ### 1. Prepare encoders
@@ -267,7 +267,9 @@ uv run python scripts/qc_explanations.py
 ```
 
 Flags:
+- default behavior checks full expected coverage for `supervised|moco|swav|random_init`, seeds `0|1|2`, and methods `gradcam|gradcampp|occlusion`
 - `--conditions ...`, `--seeds ...`, `--methods ...` for filtered QC.
+- when generation was run with filters, run QC with the same filters to avoid intentional missing-coverage failures
 - `--output <path>` to override report destination.
 
 Output:
