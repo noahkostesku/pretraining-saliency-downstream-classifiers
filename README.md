@@ -77,7 +77,9 @@ cv/
 │       │   ├── gradcam.py                 # Grad-CAM
 │       │   ├── occlusion.py               # Occlusion map 
 │       │   ├── targets.py                 # target score defs for prediction class 
-│       │   └── saliency_io.py             # helpers 
+│       │   ├── saliency_io.py             # map save/load and normalization helpers 
+│       │   ├── pipeline.py                # stage-5 explanation generation orchestration
+│       │   └── qc.py                      # stage-6 saliency quality checks
 │       └── analysis/
 │           ├── __init__.py                
 │           ├── curves.py                  # IAUC/DAUC
@@ -92,11 +94,11 @@ cv/
 │   ├── train_linear_probe.py              # training for linear probing 
 │   ├── run_probe_grid.py                  # launch all encoder/seed probe runs
 │   ├── summarize_probe_results.py         # aggregate accuracy mean +- std across seeds
-│   └── export_eval_subset.py              # sample and save the fixed explanation evaluation subset
+│   ├── export_eval_subset.py              # sample and save the fixed explanation evaluation subset
+│   ├── generate_explanations.py           # generate Grad-CAM/Grad-CAM++/Occlusion maps for saved checkpoints
+│   └── qc_explanations.py                 # run Stage-6 saliency map QC checks
 ├── notebooks/
-│   ├── 05_generate_explanations.ipynb     # Generate Grad-CAM and Occlusion maps for saved models
-│   ├── 06_explainability_qc.ipynb         # Visual quality checks on saliency maps and metadata
-│   └── 07_eval_explanations.ipynb         # Compute insertion/deletion AUC and summarize results
+│   └── run.ipynb                          # End-to-end orchestration notebook (stages 1-6 + reporting)
 ├── artifacts/
 │   ├── splits/                            # Saved train/val indices and explanation subset ids
 │   ├── checkpoints/                       # Saved probe model checkpoints by condition and seed
@@ -110,13 +112,23 @@ cv/
 
 ## Instructions for Running via CLI 
 
-### Full training command flow 
+### Full CLI flow 
+
+Training:
 
 ```bash
 uv run python scripts/prepare_encoders.py
 uv run python scripts/make_splits.py --download
 uv run python scripts/run_probe_grid.py --device cpu
 uv run python scripts/summarize_probe_results.py
+```
+
+Explainability:
+
+```bash
+uv run python scripts/export_eval_subset.py
+uv run python scripts/generate_explanations.py --device cpu
+uv run python scripts/qc_explanations.py
 ```
 
 ### 1. Prepare encoders
@@ -198,6 +210,53 @@ Key flags:
 - `--run-table-json <path>`, `--run-table-csv <path>`
 - `--summary-json <path>`, `--summary-csv <path>`
 
+### 6. Export fixed explanation evaluation subset
+
+```bash
+uv run python scripts/export_eval_subset.py
+```
+
+Flags:
+- `--subset-seed 42` and `--images-per-class 20` (study defaults).
+- `--overwrite` to regenerate subset artifacts.
+- `--download` to download STL-10 if missing.
+
+Outputs:
+- `artifacts/splits/stl10_eval_subset_indices.json`
+- `artifacts/splits/stl10_eval_subset_metadata.json`
+
+### 7. Generate explanations from trained classifiers' checkpoints
+
+```bash
+uv run python scripts/generate_explanations.py
+```
+
+Flags:
+- `--conditions supervised moco swav random_init`
+- `--seeds 0 1 2`
+- `--methods gradcam gradcampp occlusion`
+- `--batch-size <int>`, `--device cpu|cuda`
+- `--overwrite` to regenerate existing saliency outputs.
+- `--allow-remote-download` for MoCo/SwaV loading fallback.
+
+Outputs:
+- `artifacts/saliency/<condition>/seed_<seed>/<method>/<image_id>.npy`
+- `artifacts/saliency/<condition>/seed_<seed>/<method>/metadata.json`
+- `artifacts/metrics/saliency/generation_manifest.json`
+
+### 8. Run explanation quality checks
+
+```bash
+uv run python scripts/qc_explanations.py
+```
+
+Flags:
+- `--conditions ...`, `--seeds ...`, `--methods ...` for filtered QC.
+- `--output <path>` to override report destination.
+
+Output:
+- `artifacts/metrics/saliency/qc_report.json`
+
 ## Stage 1 - Encoder preparation
 
 - `src/cv/encoders/registry.py`:
@@ -254,18 +313,30 @@ Key flags:
 - `scripts/run_probe_grid.py`
     - Runs all training recipes for each encoder + setup
 - `scripts/summarize_probe_results.py` 
-    - util helper for writing summary for training results; TODO: port this to notebook
+    - util helper for writing summary for training results
 
 ## Stages 5-6 - Explainability generation
 
-- `src/cv/explain/targets.py` # predicted-class target score on original image
-- `src/cv/explain/gradcam.py` # Grad-CAM on `encoder.layer4[-1]`
-- `src/cv/explain/occlusion.py` # occlusion maps with fixed masking settings
-- `src/cv/explain/saliency_io.py` # save HxW maps and metadata
-- `src/cv/data/subset.py` # fixed explanation evaluation subset
-- `notebooks/05_generate_explanations.ipynb` # main saliency-generation workflow
-- `notebooks/06_explainability_qc.ipynb` # visual spot checks and consistency checks
-- `scripts/export_eval_subset.py` # save the reused test subset once
+- `src/cv/explain/targets.py`
+    - predicted-class target score on original image and predcited-class target helper functions 
+- `src/cv/explain/gradcam.py` 
+    - Grad-CAM and Grad-CAM++ on `encoder.layer4[-1]`, returns normalized saliency map + target classes and logits 
+- `src/cv/explain/occlusion.py` 
+    - saliency using 16x16 stride 16 and a Gaussian-blur baseline
+- `src/cv/explain/saliency_io.py` 
+    - saliency utils and map shape/range checks 
+- `src/cv/explain/pipeline.py` 
+    - Loads trained checkpoints and generates saliency maps across methods 
+- `src/cv/explain/qc.py` 
+    - QC checks for coverage, subset consistency; writes JSON 
+- `src/cv/data/subset.py` 
+    - fixed explanation evaluation subset loading and creation, writes JSON
+- `scripts/export_eval_subset.py` 
+    - CLI for saving the reused test subset once
+- `scripts/generate_explanations.py`
+    - CLI for generating Grad-CAM/Grad-CAM++/Occlusion maps from Stage-4 runs
+- `scripts/qc_explanations.py`
+    - CLI for running Stage-6 checks and saving QC report
 
 ## Stage 7 - Explanation evaluation
 
@@ -274,12 +345,11 @@ Key flags:
 - `src/cv/analysis/auc.py` # insertion/deletion AUC calculation
 - `src/cv/analysis/bootstrap.py` # optional bootstrap CIs
 - `src/cv/analysis/summarize.py` # aggregate per-image/per-condition outputs
-- `notebooks/07_eval_explanations.ipynb` # evaluate AUCs and produce summary tables
 
 
 # Notes 
 
 * We used `.py` files for all reusable logic, dataset handling, model loading, training, and metric computation. 
-* Notebooks were used only as orchestration and inspection layers for stages 5-7, and we imported Python modules into the notebook for ablation studies and explainability analysis.
+* Notebooks are used as orchestration and inspection layers (for example `notebooks/run.ipynb`), while reusable pipeline logic stays in `src/cv/` and `scripts/`.
 * We saved any notebook-produced plots and images to `artifacts/saliency/` and `artifacts/metrics/` so results stay reproducible.
 * The active config source of truth is `src/cv/config/`; root-level `configs/*.yaml` are legacy placeholders and can be removed once no longer needed for documentation.
