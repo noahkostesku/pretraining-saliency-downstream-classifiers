@@ -138,7 +138,7 @@ def load_moco_encoder(
         checkpoint_origin=checkpoint_origin,
         checkpoint_id=checkpoint_id,
         feature_dim=2048,
-        gradcam_target_layer="encoder.layer4[-1]",
+        gradcam_target_layer="encoder.layer4[-1].conv3",
         notes="Encoder keys remapped from MoCo checkpoint prefixes.",
     )
 

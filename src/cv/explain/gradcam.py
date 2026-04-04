@@ -1,4 +1,4 @@
-"""Grad-CAM generation using encoder.layer4[-1]."""
+"""Grad-CAM generation using encoder.layer4[-1].conv3."""
 
 import torch
 import torch.nn.functional as F

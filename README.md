@@ -336,7 +336,7 @@ Output:
 - `src/cv/explain/targets.py`
     - predicted-class target score on original image and predcited-class target helper functions 
 - `src/cv/explain/gradcam.py` 
-    - Grad-CAM and Grad-CAM++ on `encoder.layer4[-1]`, returns normalized saliency map + target classes and logits 
+    - Grad-CAM and Grad-CAM++ on `encoder.layer4[-1].conv3`, returns normalized saliency maps with original-image predicted-class targets/logits
 - `src/cv/explain/occlusion.py` 
     - saliency using 16x16 stride 16 and a Gaussian-blur baseline
 - `src/cv/explain/saliency_io.py` 
@@ -344,7 +344,7 @@ Output:
 - `src/cv/explain/pipeline.py` 
     - Loads trained checkpoints and generates saliency maps across methods 
 - `src/cv/explain/qc.py` 
-    - QC checks for coverage, subset consistency; writes JSON 
+    - QC checks for expected condition/seed/method coverage and fixed-subset consistency; writes JSON
 - `src/cv/data/subset.py` 
     - fixed explanation evaluation subset loading and creation, writes JSON
 - `scripts/export_eval_subset.py` 
@@ -352,7 +352,7 @@ Output:
 - `scripts/generate_explanations.py`
     - CLI for generating Grad-CAM/Grad-CAM++/Occlusion maps from Stage-4 runs
 - `scripts/qc_explanations.py`
-    - CLI for running Stage-6 checks and saving QC report
+    - CLI for running Stage-6 checks and saving quality check report
 
 ## Stage 7 - Explanation evaluation
 

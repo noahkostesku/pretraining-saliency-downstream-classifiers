@@ -135,7 +135,7 @@ def load_swav_encoder(
         checkpoint_origin=checkpoint_origin,
         checkpoint_id=checkpoint_id,
         feature_dim=2048,
-        gradcam_target_layer="encoder.layer4[-1]",
+        gradcam_target_layer="encoder.layer4[-1].conv3",
         notes="Projection/prototype heads are dropped during key remapping.",
     )
 

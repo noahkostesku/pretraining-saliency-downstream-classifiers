@@ -16,7 +16,7 @@ from cv.utils.io import read_json, write_json
 from .gradcam import generate_gradcam, generate_gradcampp
 from .occlusion import generate_occlusion_map
 from .saliency_io import save_saliency_map, write_saliency_metadata
-from .targets import get_predicted_class_target
+from .targets import gather_target_scores, get_predicted_class_target
 
 VALID_EXPLANATION_METHODS = {"gradcam", "gradcampp", "occlusion"}
 
@@ -253,6 +253,7 @@ def generate_explanations_for_run(
             with torch.no_grad():
                 logits = model(images)
             target_classes = get_predicted_class_target(logits)
+            target_scores = gather_target_scores(logits, target_classes)
 
             saliency_maps, method_targets, _ = method_callable(
                 model=model,
@@ -261,6 +262,7 @@ def generate_explanations_for_run(
             )
 
             predictions = target_classes.detach().cpu()
+            target_scores_cpu = target_scores.detach().cpu()
             method_targets = method_targets.detach().cpu()
             labels_cpu = labels.detach().cpu()
 
@@ -282,6 +284,10 @@ def generate_explanations_for_run(
                     "seed": run.seed,
                     "method": method,
                     "test_image_id": image_id,
+                    "target_score_type": "predicted_class_logit",
+                    "target_logit_original": float(
+                        target_scores_cpu[item_index].item()
+                    ),
                     "predicted_class": predicted_class,
                     "true_class": true_class,
                     "correct": bool(predicted_class == true_class),

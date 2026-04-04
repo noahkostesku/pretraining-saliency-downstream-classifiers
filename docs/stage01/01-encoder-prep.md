@@ -59,7 +59,7 @@ swav
 - remove or bypass the original classification head if the checkpoint includes one
 - expose the encoder as `image -> pooled 2048-D feature`
 - ensure the forward path is consistent across conditions
-- keep access to `encoder.layer4[-1]` for Grad-CAM later
+- keep access to `encoder.layer4[-1].conv3` for Grad-CAM later
 
 ### 4. Freeze behavior for probe training
 
@@ -81,7 +81,7 @@ swav
 - run a single batch through each encoder
 - verify output shape is `[batch, 2048]` after pooling
 - verify no missing keys or unexpected shape mismatches when loading checkpoints
-- verify `layer4[-1]` exists and is reachable for explanation methods
+- verify `layer4[-1].conv3` exists and is reachable for explanation methods
 - verify a frozen probe run leaves encoder weights and BatchNorm running statistics unchanged
 
 ## Suggested metadata template
@@ -94,7 +94,7 @@ pretraining_objective:
 checkpoint_origin:
 checkpoint_id:
 feature_dim: 2048
-gradcam_target_layer: encoder.layer4[-1]
+gradcam_target_layer: encoder.layer4[-1].conv3
 notes:
 ```
 

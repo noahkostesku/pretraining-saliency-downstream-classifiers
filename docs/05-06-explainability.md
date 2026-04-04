@@ -16,18 +16,27 @@ Generate explanation maps from the trained downstream models under one fixed pro
 
 Compute explanations with respect to the logit of the model's predicted class on the original unmodified image.
 
+### Explanation generation rule
+
+- generate exactly one saliency map per image and method from the original image
+- keep this map fixed for downstream insertion/deletion ranking
+- do not recompute saliency after each perturbation step in the main faithfulness protocol
+- if explanation stability under perturbation is studied, report it as a separate secondary analysis
+
 ### Grad-CAM target layer
 
-Use `encoder.layer4[-1]` as the target layer.
+Use the last spatial convolution in the encoder, `encoder.layer4[-1].conv3`, as the target layer.
 
 ### Explanation evaluation subset
 
 - sample a fixed stratified subset of `200` STL-10 test images once (`20` images per class)
 - use explanation-subset seed `42`
 - reuse the same subset across all encoder conditions and all seeds
-- do not restrict the subset to correctly classified images
+- do not restrict Stage 5/6 generation to correctly classified images
 - keep the exact same image ids for every condition, including random-init
 - evaluate explanations on each model's predicted class for every image in the fixed subset
+- for Stage 7 primary cross-condition faithfulness comparisons, compute a per-seed intersection of correctly classified images within this fixed subset
+- keep all-200-image summaries as supplementary fairness diagnostics
 
 ### Shared output format
 
@@ -38,7 +47,7 @@ Use `encoder.layer4[-1]` as the target layer.
 
 ## Grad-CAM implementation tasks
 
-- hook activations and gradients from `encoder.layer4[-1]`
+- hook activations and gradients from `encoder.layer4[-1].conv3`
 - generate one heatmap per image and target class
 - upsample to the common `224 x 224` image-space resolution
 - apply the same postprocessing and `[0, 1]` normalization rule across all conditions
@@ -62,7 +71,7 @@ Use `encoder.layer4[-1]` as the target layer.
 Recommended grouping:
 
 ```text
-artifacts/explanations/
+artifacts/saliency/
   supervised/
   moco/
   swav/
@@ -77,6 +86,8 @@ Within each condition, keep outputs separated by seed, method, and image id.
 - seed
 - explanation method
 - test image id
+- target score type
+- original-image target logit
 - predicted class on original image
 - true class
 - correctness flag
@@ -94,5 +105,6 @@ Within each condition, keep outputs separated by seed, method, and image id.
 
 ## Interpretation note
 
-- the fixed subset includes both correct and incorrect predictions by design
-- this keeps the evaluation subset identical across conditions, but some maps will explain wrong predictions
+- Stage 5/6 artifacts intentionally cover a fixed subset that includes both correct and incorrect predictions
+- this keeps generation and QC fully aligned across conditions, including random-init
+- Stage 7 should treat the common correctly classified intersection as primary and the all-200 subset as supplementary

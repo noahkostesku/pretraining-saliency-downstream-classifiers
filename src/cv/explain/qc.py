@@ -1,6 +1,7 @@
 """Quality-control checks for saved explanation artifacts."""
 
 from collections import defaultdict
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,10 @@ from cv.data import load_eval_subset
 from cv.utils.io import write_json
 
 from .saliency_io import load_saliency_map, read_saliency_metadata
+
+DEFAULT_QC_CONDITIONS = ("supervised", "moco", "swav", "random_init")
+DEFAULT_QC_SEEDS = (0, 1, 2)
+DEFAULT_QC_METHODS = ("gradcam", "gradcampp", "occlusion")
 
 
 def _resolve_artifacts_root(artifacts_root: str | Path | None) -> Path:
@@ -41,9 +46,11 @@ def run_explanation_qc(
     expected_count = len(expected_ids)
 
     saliency_root = root / "saliency"
-    allowed_conditions = set(conditions) if conditions is not None else None
-    allowed_seeds = set(seeds) if seeds is not None else None
-    allowed_methods = set(methods) if methods is not None else None
+    allowed_conditions = (
+        set(conditions) if conditions is not None else set(DEFAULT_QC_CONDITIONS)
+    )
+    allowed_seeds = set(seeds) if seeds is not None else set(DEFAULT_QC_SEEDS)
+    allowed_methods = set(methods) if methods is not None else set(DEFAULT_QC_METHODS)
 
     errors: list[dict[str, str]] = []
     rows: list[dict[str, Any]] = []
@@ -58,7 +65,7 @@ def run_explanation_qc(
         if not condition_dir.is_dir():
             continue
         condition = condition_dir.name
-        if allowed_conditions is not None and condition not in allowed_conditions:
+        if condition not in allowed_conditions:
             continue
 
         for seed_dir in sorted(condition_dir.glob("seed_*")):
@@ -78,14 +85,14 @@ def run_explanation_qc(
                 )
                 continue
 
-            if allowed_seeds is not None and seed not in allowed_seeds:
+            if seed not in allowed_seeds:
                 continue
 
             for method_dir in sorted(seed_dir.glob("*")):
                 if not method_dir.is_dir():
                     continue
                 method = method_dir.name
-                if allowed_methods is not None and method not in allowed_methods:
+                if method not in allowed_methods:
                     continue
 
                 metadata_path = method_dir / "metadata.json"
@@ -108,6 +115,8 @@ def run_explanation_qc(
                     )
                     continue
 
+                seen_image_ids: set[int] = set()
+
                 for row in method_rows:
                     map_path_value = row.get("saliency_map_path")
                     image_id_value = row.get("test_image_id")
@@ -121,6 +130,18 @@ def run_explanation_qc(
                             }
                         )
                         continue
+
+                    if image_id_value in seen_image_ids:
+                        errors.append(
+                            {
+                                "scope": f"{condition}/seed_{seed}/{method}",
+                                "error": (
+                                    f"Duplicate test_image_id in metadata: {image_id_value}"
+                                ),
+                            }
+                        )
+                        continue
+                    seen_image_ids.add(image_id_value)
 
                     map_path = Path(map_path_value)
                     if not map_path.exists():
@@ -148,7 +169,15 @@ def run_explanation_qc(
 
     coverage_rows: list[dict[str, Any]] = []
     grouped_by_condition_seed: dict[tuple[str, int], list[set[int]]] = defaultdict(list)
-    for (condition, seed, method), image_ids in sorted(image_ids_by_key.items()):
+    expected_keys = sorted(
+        product(
+            sorted(allowed_conditions),
+            sorted(allowed_seeds),
+            sorted(allowed_methods),
+        )
+    )
+    for condition, seed, method in expected_keys:
+        image_ids = image_ids_by_key.get((condition, seed, method), set())
         coverage_rows.append(
             {
                 "condition": condition,
@@ -161,6 +190,15 @@ def run_explanation_qc(
         )
 
         grouped_by_condition_seed[(condition, seed)].append(image_ids)
+        if not image_ids:
+            errors.append(
+                {
+                    "scope": f"{condition}/seed_{seed}/{method}",
+                    "error": "Missing saliency artifacts for expected run/method.",
+                }
+            )
+            continue
+
         if image_ids != expected_ids:
             errors.append(
                 {
@@ -170,8 +208,12 @@ def run_explanation_qc(
             )
 
     for (condition, seed), id_sets in grouped_by_condition_seed.items():
-        baseline = id_sets[0]
-        for image_ids in id_sets[1:]:
+        non_empty_sets = [image_ids for image_ids in id_sets if image_ids]
+        if len(non_empty_sets) < 2:
+            continue
+
+        baseline = non_empty_sets[0]
+        for image_ids in non_empty_sets[1:]:
             if image_ids != baseline:
                 errors.append(
                     {

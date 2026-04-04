@@ -44,7 +44,7 @@ def load_supervised_encoder(
         checkpoint_origin="torchvision",
         checkpoint_id=f"ResNet50_Weights.{weight_enum}",
         feature_dim=2048,
-        gradcam_target_layer="encoder.layer4[-1]",
+        gradcam_target_layer="encoder.layer4[-1].conv3",
         notes="Torchvision supervised baseline checkpoint.",
     )
 

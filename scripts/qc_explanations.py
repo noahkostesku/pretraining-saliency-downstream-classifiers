@@ -17,23 +17,23 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--conditions",
         nargs="+",
-        default=None,
+        default=["supervised", "moco", "swav", "random_init"],
         choices=["supervised", "moco", "swav", "random_init"],
-        help="Optional subset of conditions to check.",
+        help="Condition names to check (default: all main conditions).",
     )
     parser.add_argument(
         "--seeds",
         nargs="+",
         type=int,
-        default=None,
-        help="Optional subset of seeds to check.",
+        default=[0, 1, 2],
+        help="Seeds to check (default: 0 1 2).",
     )
     parser.add_argument(
         "--methods",
         nargs="+",
-        default=None,
+        default=["gradcam", "gradcampp", "occlusion"],
         choices=["gradcam", "gradcampp", "occlusion"],
-        help="Optional subset of methods to check.",
+        help="Methods to check (default: gradcam gradcampp occlusion).",
     )
     parser.add_argument(
         "--artifacts-root",

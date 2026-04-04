@@ -79,4 +79,4 @@ class EncoderWrapper(nn.Module):
     @property
     def gradcam_target_layer(self) -> nn.Module:
         """Return target layer used by Grad-CAM in later stages."""
-        return self.encoder.layer4[-1]
+        return self.encoder.layer4[-1].conv3
