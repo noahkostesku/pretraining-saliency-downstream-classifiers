@@ -1,12 +1,28 @@
-# setup
+# CS 4452 final project 
 
-1. have `uv`
-2. clone the repo and run `uv venv && uv sync`
-3. Run `source .venv/bin/activate` for venv.
+## Research Objective 
 
-# About the Project 
+"Do different encoders produce representations that support better downstream classification, and do the resulting end-to-end decisions rely on behaviorally important and visually plausible image regions?"
 
-We used PyTorch for models and training, Numpy for saliency arrays and sklearn for straified splitting for the validation set for downstream training and AUC helper functions for evaluating GradCAM saliency maps.
+ALT: Can I compare how useful different learned representations are for downstream classification, and whether the resulting decisions are grounded in faithful and visually plausible image regions?
+
+- We evaluate whether different pretrained encoders yield representations that transfer well to STL-10 under linear probing, and whether the resulting downstream decisions are supported by faithful and visually plausible saliency regions
+
+ALT: "whether different pretrained encoders provide more transferable representations for downstream classification, and whether the resulting predictions rely on faithful and visually plausible image evidence"
+
+- We use PyTorch for models and training, Numpy for saliency arrays and sklearn for straified splitting for the validation set for downstream training and AUC helper functions for evaluating GradCAM saliency maps.
+
+We aim to provide findings on the following:
+- whether some encoders transfer better than others under the same linear-probe protocol
+- whether some encoder-based pipelines produce more faithful saliency maps than others
+- whether higher downstream accuracy coincides with more faithful or more object-centered explanations
+- whether the learned representation appears more or less useful through the behavior of the downstream model
+
+## Potential Next Steps
+
+Investigate semantic meaning of encoders: “What does each encoder embedding dimension mean, semantically, and do they provide meaningful signals for downstream classification tasks?”
+
+Using concept probing, activation maximization, nearest-neighbor retrieval in feature space, feature visualization, concept alignment or TCAV-style analysis, which is out of scope for the current project. 
 
 ## Setup
 
