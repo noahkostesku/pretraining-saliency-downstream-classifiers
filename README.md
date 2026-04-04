@@ -8,6 +8,15 @@
 
 We used PyTorch for models and training, Numpy for saliency arrays and sklearn for straified splitting for the validation set for downstream training and AUC helper functions for evaluating GradCAM saliency maps.
 
+## Setup
+
+The [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager is needed for running this project. Run these from repo root after environment setup:
+
+```bash
+uv venv # make a virtual environment  
+source .venv/bin/activate # activate the environment 
+uv sync # install packages 
+```
 
 # Project Structure 
 
@@ -99,6 +108,96 @@ cv/
 │   └── external/                          # Optional external checkpoint files
 ```
 
+## Instructions for Running via CLI 
+
+### Full training command flow 
+
+```bash
+uv run python scripts/prepare_encoders.py
+uv run python scripts/make_splits.py --download
+uv run python scripts/run_probe_grid.py --device cpu
+uv run python scripts/summarize_probe_results.py
+```
+
+### 1. Prepare encoders
+
+```bash
+uv run python scripts/prepare_encoders.py
+```
+
+Flags:
+- `--conditions supervised moco swav` to choose which encoder checkpoints to prepare/validate.
+- `--force-download` to redownload MoCo/SwaV checkpoint files.
+- `--skip-inspect` to skip the post-prepare encoder inspection call.
+- `--device cpu|cuda` to select device for warm/inspection checks.
+
+Optionally, inspect the encoders by running: 
+
+```bash
+uv run python scripts/inspect_encoders.py
+```
+
+Flags:
+- `--conditions supervised moco swav` to select inspected encoders.
+- `--moco-checkpoint <path>` and `--swav-checkpoint <path>` for explicit checkpoint paths.
+- `--allow-remote-download` to allow fallback download when local files are missing.
+- `--batch-size <int>`, `--device cpu|cuda`, `--output <json_path>` to control checks/output report.
+
+### 2. Make data splits from STL-10 train and validation datasets
+
+```bash
+uv run python scripts/make_splits.py
+```
+
+Flags:
+- `--download` to download STL-10 if missing.
+- `--overwrite` to regenerate split artifacts.
+- `--split-seed 42` and `--val-ratio 0.2` (study defaults).
+
+Outputs:
+- `artifacts/splits/stl10_train_indices.json`
+- `artifacts/splits/stl10_val_indices.json`
+- `artifacts/splits/stl10_split_metadata.json`
+
+### 3. Train a single run (smoke test)
+
+```bash
+uv run python scripts/train_linear_probe.py --condition supervised --seed 0
+```
+
+Flags:
+- `--condition supervised|moco|swav|random_init`
+- `--seed <int>`
+- `--recipe-id <id>` to override default fixed recipe mapping.
+- `--device`, `--num-workers`, `--no-pin-memory`, `--download`
+- `--moco-checkpoint`, `--swav-checkpoint`, `--allow-remote-download`
+- `--skip-sanity-checks` to skip first-batch gradient/BN checks.
+
+### 4. Run full training 
+
+```bash
+uv run python scripts/run_probe_grid.py
+```
+
+Flags:
+- `--conditions supervised moco swav random_init`
+- `--seeds 0 1 2`
+- `--probe-recipe-id <id>` and `--random-init-recipe-id <id>`
+- `--skip-cross-condition-check` to skip one-batch shape/class consistency check.
+- `--run-table-json <path>` and `--run-table-csv <path>` to set run table outputs.
+- Also supports loader/checkpoint flags from single-run script.
+
+### 5. Summarize Run Metrics 
+
+```bash
+uv run python scripts/summarize_probe_results.py
+```
+
+Key flags:
+- `--run-metrics-root <dir>` (default: `artifacts/metrics/probe_runs`)
+- `--run-table-json <path>`, `--run-table-csv <path>`
+- `--summary-json <path>`, `--summary-csv <path>`
+
 ## Stage 1 - Encoder preparation
 
 - `src/cv/encoders/registry.py`:
@@ -140,33 +239,6 @@ cv/
 - `scripts/make_splits.py` 
     - for re-using fixed splits 
 
-### CLI command for making data splits for reproducing:
-
-1. Create fixed split artifacts (downloads STL-10 if missing):
-```bash
-uv run python scripts/make_splits.py --download
-```
-
-2. Re-run safely (reuses existing artifacts, does not resample):
-```
-uv run python scripts/make_splits.py
-```
-
-3. Force regeneration (same protocol, useful if you want to refresh files):
-```
-uv run python scripts/make_splits.py --overwrite
-```
-
-4. Optional args (below are the default vals for these flags):
-```
-uv run python scripts/make_splits.py --split-seed 42 --val-ratio 0.2
-```
-
-Outputs:
-- `artifacts/splits/stl10_train_indices.json`
-- `artifacts/splits/stl10_val_indices.json`
-- `artifacts/splits/stl10_split_metadata.json`
-
 ## Stage 4 - Linear Probe Training 
 
 - `src/cv/models/linear_probe.py`
@@ -183,13 +255,6 @@ Outputs:
     - Runs all training recipes for each encoder + setup
 - `scripts/summarize_probe_results.py` 
     - util helper for writing summary for training results; TODO: port this to notebook
-
-Before running probe training on a fresh clone, make sure encoder checkpoints exist in `data/external/`.
-If they are missing, run:
-
-```bash
-uv run python scripts/prepare_encoders.py
-```
 
 ## Stages 5-6 - Explainability generation
 
