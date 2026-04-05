@@ -1,5 +1,6 @@
 """Shared training loop and validation checkpointing logic."""
 
+import csv
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -147,6 +148,10 @@ class TrainingRunConfig:
     moco_checkpoint_path: str | None = None
     swav_checkpoint_path: str | None = None
     sanity_checks: bool = True
+    verbose_batch_logging: bool = True
+    log_every_n_batches: int = 1
+    save_loss_history: bool = True
+    save_loss_plot: bool = True
 
 
 def resolve_training_recipe(*, condition: str, recipe_id: str | None) -> TrainingRecipe:
@@ -226,6 +231,71 @@ def _resolve_run_metrics_path(
         / config.condition
         / f"seed_{config.seed}_{recipe.recipe_id}.json"
     )
+
+
+def _resolve_loss_artifact_paths(
+    *,
+    config: TrainingRunConfig,
+    recipe: TrainingRecipe,
+) -> dict[str, Path]:
+    artifacts_root = _resolve_artifacts_root(config.artifacts_root)
+    root = artifacts_root / "metrics" / "probe_runs" / config.condition
+    stem = f"seed_{config.seed}_{recipe.recipe_id}"
+    return {
+        "batch_csv": root / f"{stem}.batch_losses.csv",
+        "batch_json": root / f"{stem}.batch_losses.json",
+        "epoch_csv": root / f"{stem}.epoch_losses.csv",
+        "epoch_json": root / f"{stem}.epoch_losses.json",
+        "curve_png": root / f"{stem}.loss_curve.png",
+    }
+
+
+def _write_csv_rows(
+    *,
+    path: Path,
+    rows: list[dict[str, Any]],
+    fieldnames: list[str],
+) -> None:
+    ensure_parent(path)
+    with path.open("w", encoding="utf-8", newline="") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({name: row.get(name) for name in fieldnames})
+
+
+def _save_loss_curve(
+    *,
+    path: Path,
+    epoch_rows: list[dict[str, Any]],
+    condition: str,
+    seed: int,
+    recipe_id: str,
+) -> None:
+    if not epoch_rows:
+        raise ValueError("Cannot save loss curve with empty epoch rows.")
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    epochs = [int(row["epoch"]) for row in epoch_rows]
+    train_losses = [float(row["train_loss"]) for row in epoch_rows]
+    val_losses = [float(row["val_loss"]) for row in epoch_rows]
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(epochs, train_losses, label="train_loss", marker="o", linewidth=1.5)
+    ax.plot(epochs, val_losses, label="val_loss", marker="o", linewidth=1.5)
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title(f"Loss Curves ({condition}, seed={seed}, recipe={recipe_id})")
+    ax.grid(alpha=0.25)
+    ax.legend()
+
+    ensure_parent(path)
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
 
 
 def _resolve_condition_checkpoint_path(config: TrainingRunConfig) -> str | None:
@@ -545,12 +615,23 @@ def _train_one_epoch(
     run_sanity_checks: bool,
     is_frozen_probe: bool,
     is_layer4_ablation: bool,
-) -> dict[str, float]:
+    condition: str,
+    seed: int,
+    epoch: int,
+    global_step_start: int,
+    verbose_batch_logging: bool,
+    log_every_n_batches: int,
+) -> dict[str, Any]:
     model.train()
 
     total_loss = 0.0
     total_correct = 0
     total_examples = 0
+    global_step = global_step_start
+    batch_history: list[dict[str, Any]] = []
+    num_batches = len(dataloader)
+    if num_batches <= 0:
+        raise ValueError("Training dataloader has zero batches; cannot run an epoch.")
 
     sanity_done = False
 
@@ -576,6 +657,7 @@ def _train_one_epoch(
 
         logits = model(images)
         loss = criterion(logits, targets)
+        loss_value = float(loss.item())
         batch_size = targets.shape[0]
         batch_correct = top1_num_correct(logits, targets)
 
@@ -630,9 +712,31 @@ def _train_one_epoch(
                 _assert_random_init_encoder_updated(model, random_init_param_before)
             sanity_done = True
 
+        batch_history.append(
+            {
+                "condition": condition,
+                "seed": seed,
+                "epoch": epoch,
+                "batch_index": batch_index + 1,
+                "num_batches": num_batches,
+                "global_step": global_step,
+                "train_loss": loss_value,
+            }
+        )
+        if verbose_batch_logging and (
+            (batch_index + 1) % log_every_n_batches == 0
+            or batch_index + 1 == num_batches
+        ):
+            print(
+                f"[batch] condition={condition} seed={seed} "
+                f"epoch={epoch} batch={batch_index + 1}/{num_batches} "
+                f"step={global_step} loss={loss_value:.6f}"
+            )
+
+        global_step += 1
         total_examples += batch_size
         total_correct += batch_correct
-        total_loss += float(loss.item()) * batch_size
+        total_loss += loss_value * batch_size
 
     if total_examples == 0:
         raise ValueError("Training dataloader is empty; cannot run an epoch.")
@@ -641,6 +745,8 @@ def _train_one_epoch(
         "loss": total_loss / total_examples,
         "accuracy": total_correct / total_examples,
         "num_examples": float(total_examples),
+        "batch_history": batch_history,
+        "next_global_step": global_step,
     }
 
 
@@ -656,6 +762,10 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         raise ValueError(
             f"Seed {config.seed} is not valid for recipe '{recipe.recipe_id}'. "
             f"Allowed seeds: {list(recipe.seeds)}"
+        )
+    if config.log_every_n_batches <= 0:
+        raise ValueError(
+            f"log_every_n_batches must be positive, got {config.log_every_n_batches}."
         )
 
     mode_config = resolve_mode_config(
@@ -727,6 +837,8 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
     best_val_acc = float("-inf")
     best_epoch = -1
     epoch_history: list[dict[str, float | int]] = []
+    batch_loss_history: list[dict[str, Any]] = []
+    global_step = 0
     checkpoint_path = _resolve_checkpoint_path(config=config, recipe=recipe)
 
     for epoch in range(1, recipe.epochs + 1):
@@ -740,7 +852,15 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
             run_sanity_checks=bool(config.sanity_checks and epoch == 1),
             is_frozen_probe=is_frozen_probe,
             is_layer4_ablation=is_layer4_ablation,
+            condition=config.condition,
+            seed=config.seed,
+            epoch=epoch,
+            global_step_start=global_step,
+            verbose_batch_logging=config.verbose_batch_logging,
+            log_every_n_batches=config.log_every_n_batches,
         )
+        global_step = int(train_metrics["next_global_step"])
+        batch_loss_history.extend(train_metrics["batch_history"])
 
         val_metrics = evaluate_model(
             model=model,
@@ -761,6 +881,14 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
                 "val_acc": float(val_metrics["accuracy"]),
                 "lr": float(optimizer.param_groups[0]["lr"]),
             }
+        )
+
+        print(
+            f"[epoch] condition={config.condition} seed={config.seed} epoch={epoch}/{recipe.epochs} "
+            f"train_loss={float(train_metrics['loss']):.6f} "
+            f"train_acc={float(train_metrics['accuracy']):.4f} "
+            f"val_loss={float(val_metrics['loss']):.6f} "
+            f"val_acc={float(val_metrics['accuracy']):.4f}"
         )
 
         val_acc = float(val_metrics["accuracy"])
@@ -811,6 +939,76 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         "device": str(device),
         "epoch_history": epoch_history,
     }
+
+    loss_paths = _resolve_loss_artifact_paths(config=config, recipe=recipe)
+    if config.save_loss_history:
+        epoch_loss_rows = [
+            {
+                "condition": config.condition,
+                "seed": config.seed,
+                "recipe_id": recipe.recipe_id,
+                "epoch": int(row["epoch"]),
+                "train_loss": float(row["train_loss"]),
+                "val_loss": float(row["val_loss"]),
+                "train_acc": float(row["train_acc"]),
+                "val_acc": float(row["val_acc"]),
+                "lr": float(row["lr"]),
+            }
+            for row in epoch_history
+        ]
+        _write_csv_rows(
+            path=loss_paths["epoch_csv"],
+            rows=epoch_loss_rows,
+            fieldnames=[
+                "condition",
+                "seed",
+                "recipe_id",
+                "epoch",
+                "train_loss",
+                "val_loss",
+                "train_acc",
+                "val_acc",
+                "lr",
+            ],
+        )
+        write_json(loss_paths["epoch_json"], epoch_loss_rows)
+
+        _write_csv_rows(
+            path=loss_paths["batch_csv"],
+            rows=batch_loss_history,
+            fieldnames=[
+                "condition",
+                "seed",
+                "epoch",
+                "batch_index",
+                "num_batches",
+                "global_step",
+                "train_loss",
+            ],
+        )
+        write_json(loss_paths["batch_json"], batch_loss_history)
+
+        run_result["batch_loss_csv_path"] = str(loss_paths["batch_csv"])
+        run_result["batch_loss_json_path"] = str(loss_paths["batch_json"])
+        run_result["epoch_loss_csv_path"] = str(loss_paths["epoch_csv"])
+        run_result["epoch_loss_json_path"] = str(loss_paths["epoch_json"])
+
+        print("[artifacts] saved loss history files:")
+        print(f"- batch CSV: {loss_paths['batch_csv']}")
+        print(f"- batch JSON: {loss_paths['batch_json']}")
+        print(f"- epoch CSV: {loss_paths['epoch_csv']}")
+        print(f"- epoch JSON: {loss_paths['epoch_json']}")
+
+    if config.save_loss_plot:
+        _save_loss_curve(
+            path=loss_paths["curve_png"],
+            epoch_rows=[dict(row) for row in epoch_history],
+            condition=config.condition,
+            seed=config.seed,
+            recipe_id=recipe.recipe_id,
+        )
+        run_result["loss_curve_path"] = str(loss_paths["curve_png"])
+        print(f"[artifacts] saved loss curve: {loss_paths['curve_png']}")
 
     metrics_path = _resolve_run_metrics_path(config=config, recipe=recipe)
     write_json(metrics_path, run_result)
