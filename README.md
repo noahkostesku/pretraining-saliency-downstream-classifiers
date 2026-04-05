@@ -206,8 +206,10 @@ Flags:
 ### 4. Run full training 
 
 ```bash
-uv run python scripts/run_probe_grid.py
+uv run python scripts/run_probe_grid.py --device [DEVICE]
 ```
+
+You must pass in `--device` and specify what to run on.
 
 Flags:
 - `--conditions supervised moco swav random_init`
