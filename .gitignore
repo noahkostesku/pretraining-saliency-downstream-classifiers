@@ -10,5 +10,8 @@ wheels/
 # Virtual environments
 .venv
 
+artifacts/checkpoints/
+artifacts/splits/
+
 notebooks/.ipynb_checkpoints
 AGENTS.md

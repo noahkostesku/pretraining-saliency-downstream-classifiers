@@ -1,0 +1,46 @@
+{
+  "stage": "stage-1-encoder-preparation",
+  "device": "cpu",
+  "results": [
+    {
+      "condition": "supervised",
+      "feature_shape": [
+        2,
+        2048
+      ],
+      "feature_dim": 2048,
+      "gradcam_layer": "encoder.layer4[-1].conv3",
+      "encoder_frozen": true,
+      "checkpoint_id": "ResNet50_Weights.IMAGENET1K_V2",
+      "checkpoint_origin": "torchvision",
+      "pretraining_objective": "supervised classification"
+    },
+    {
+      "condition": "moco",
+      "feature_shape": [
+        2,
+        2048
+      ],
+      "feature_dim": 2048,
+      "gradcam_layer": "encoder.layer4[-1].conv3",
+      "encoder_frozen": true,
+      "checkpoint_id": "/Users/tlam/cv/data/external/moco_v2_800ep_pretrain.pth.tar",
+      "checkpoint_origin": "local file",
+      "pretraining_objective": "MoCo v2 contrastive self-supervision"
+    },
+    {
+      "condition": "swav",
+      "feature_shape": [
+        2,
+        2048
+      ],
+      "feature_dim": 2048,
+      "gradcam_layer": "encoder.layer4[-1].conv3",
+      "encoder_frozen": true,
+      "checkpoint_id": "/Users/tlam/cv/data/external/swav_800ep_pretrain.pth.tar",
+      "checkpoint_origin": "local file",
+      "pretraining_objective": "SwaV self-supervised clustering"
+    }
+  ],
+  "failures": []
+}
