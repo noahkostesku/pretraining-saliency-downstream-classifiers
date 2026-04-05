@@ -43,7 +43,6 @@ cv/
 ├── pyproject.toml                         # Python package metadata and dependencies
 ├── main.py                                # Minimal entrypoint; can later dispatch CLI tasks
 ├── docs/
-│   ├── README.md                          # Stage execution order and docs guide
 │   ├── 02-03-downstream-trainings-and-split.md  # STL-10 split protocol and shared wrapper design
 │   ├── 04-trainprobes.md                  # Frozen linear-probe training plan
 │   ├── 05-06-explainability.md            # Grad-CAM and Occlusion generation plan
@@ -114,7 +113,8 @@ cv/
 │   ├── generate_explanations.py           # generate Grad-CAM/Grad-CAM++/Occlusion maps for saved checkpoints
 │   └── qc_explanations.py                 # run Stage-6 saliency map QC checks
 ├── notebooks/
-│   └── run.ipynb                          # End-to-end orchestration notebook (stages 1-6 + reporting)
+│   ├── run.ipynb                          # End-to-end orchestration notebook (stages 1-6 + reporting)
+│   └── analysis.ipynb                     # Stage 7-9 analysis notebook (faithfulness, ablation, Grad-CAM++)
 ├── artifacts/
 │   ├── splits/                            # Saved train/val indices and explanation subset ids
 │   ├── checkpoints/                       # Saved probe model checkpoints by condition and seed
@@ -275,6 +275,8 @@ Flags:
 Output:
 - `artifacts/metrics/saliency/qc_report.json`
 
+After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablation fine tuning, and GradCAM++. Alternatively, you can also run `notebooks/run.ipynb` for all of the steps above instead of using the CLI. 
+
 ## Stage 1 - Encoder preparation
 
 - `src/cv/encoders/registry.py`:
@@ -358,11 +360,52 @@ Output:
 
 ## Stage 7 - Explanation evaluation
 
-- `src/cv/analysis/curves.py` # build insertion/deletion score curves
-- `src/cv/analysis/insertion_deletion.py` # shared perturbation loop
-- `src/cv/analysis/auc.py` # insertion/deletion AUC calculation
-- `src/cv/analysis/bootstrap.py` # optional bootstrap CIs
-- `src/cv/analysis/summarize.py` # aggregate per-image/per-condition outputs
+- `src/cv/analysis/curves.py`:
+    - builds deterministic image-space patch grids (`16x16`, `stride=16`) and perturbation x-axis fractions
+    - computes patch-level saliency scores and stable patch rankings used by insertion/deletion
+- `src/cv/analysis/insertion_deletion.py`:
+    - runs the fixed perturbation protocol (blurred baseline + fixed saliency ranking, no saliency recompute)
+    - computes per-image insertion/deletion score curves and additional diagnostics (drop/flip at top-k)
+- `src/cv/analysis/auc.py`:
+    - computes curve AUCs (trapezoidal integration) for insertion and deletion metrics
+- `src/cv/analysis/bootstrap.py`:
+    - provides paired bootstrap CI and paired permutation p-value helpers for method/condition comparisons
+- `src/cv/analysis/summarize.py`:
+    - computes the primary Stage-7 slice (per-seed correct-intersection across compared conditions)
+    - aggregates per-image results to seed-level and condition-level summaries
+- `src/cv/analysis/__init__.py`:
+    - exports analysis helpers for notebook and pipeline use
+- `notebooks/analysis.ipynb`:
+    - orchestrates Stage-7 preflight, per-image IAUC/DAUC evaluation, paired stats, and saved figures/tables
+
+## Stage 8 - Optional limited fine-tuning ablation
+
+- `src/cv/train/trainer.py`:
+    - adds fixed Stage-8 recipe `ablation_layer4_v1` (`seed=0`, `30` epochs, AdamW)
+    - allows pretrained conditions (`supervised`, `moco`, `swav`) to run ablation training modes
+    - builds ablation optimizer param groups with separate LRs (`layer4=1e-4`, `classifier=1e-3`)
+    - adds sanity checks so only `layer4` + classifier are trainable/updated
+- `src/cv/train/__init__.py`:
+    - exports `ABLATION_LAYER4_RECIPE_V1` for external use
+- `notebooks/analysis.ipynb`:
+    - runs optional Stage-8 ablation generation via `train_one_run(...)`
+    - compares ablation vs frozen-probe baseline for seed 0
+    - writes dedicated Stage-8 summaries under `artifacts/metrics/ablation_layer4/` while keeping run metrics in `artifacts/metrics/probe_runs/`
+
+## Stage 9 - Mandatory Grad-CAM++ diagnostics
+
+- `src/cv/analysis/summarize.py`:
+    - computes method deltas (`Grad-CAM++ - Grad-CAM`) on matched primary-slice image keys
+    - aggregates deltas to seed/condition level and applies the decision-rule classifier (`reinforce|neutral|weaken|mixed`)
+- `notebooks/analysis.ipynb`:
+    - generates required core quantitative outputs:
+        - `artifacts/metrics/gradcampp_diagnostics/seed_level_method_and_delta_scores.csv`
+        - `artifacts/metrics/gradcampp_diagnostics/seed_level_deltas.csv`
+        - `artifacts/metrics/gradcampp_diagnostics/condition_level_deltas.csv`
+        - `artifacts/metrics/gradcampp_diagnostics/outcome_label.json`
+        - `artifacts/metrics/gradcampp_diagnostics/diagnostics_note.json`
+    - generates required qualitative side-by-side panel under `artifacts/saliency/gradcampp_diagnostics/main_panel/`
+    - includes a markdown appendix plan (not yet implemented) for `per_class_deltas.csv` and `error_slice_deltas.csv`
 
 
 # Notes 
