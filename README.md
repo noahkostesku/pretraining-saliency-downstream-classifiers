@@ -34,6 +34,8 @@ source .venv/bin/activate # activate the environment
 uv sync # install packages 
 ```
 
+**IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
+
 # Project Structure 
 
 ```text
