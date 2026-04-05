@@ -24,7 +24,7 @@
       "feature_dim": 2048,
       "gradcam_layer": "encoder.layer4[-1].conv3",
       "encoder_frozen": true,
-      "checkpoint_id": "/Users/tlam/cv/data/external/moco_v2_800ep_pretrain.pth.tar",
+      "checkpoint_id": "/home/thomson/cv-project/data/external/moco_v2_800ep_pretrain.pth.tar",
       "checkpoint_origin": "local file",
       "pretraining_objective": "MoCo v2 contrastive self-supervision"
     },
@@ -37,7 +37,7 @@
       "feature_dim": 2048,
       "gradcam_layer": "encoder.layer4[-1].conv3",
       "encoder_frozen": true,
-      "checkpoint_id": "/Users/tlam/cv/data/external/swav_800ep_pretrain.pth.tar",
+      "checkpoint_id": "/home/thomson/cv-project/data/external/swav_800ep_pretrain.pth.tar",
       "checkpoint_origin": "local file",
       "pretraining_objective": "SwaV self-supervised clustering"
     }

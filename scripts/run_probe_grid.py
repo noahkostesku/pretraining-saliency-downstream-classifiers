@@ -54,8 +54,8 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--device",
-        default="cpu",
-        help="Torch device string, for example 'cpu' or 'cuda'.",
+        default="auto",
+        help="Torch device string: 'auto', 'cpu', or 'cuda'.",
     )
     parser.add_argument(
         "--num-workers",

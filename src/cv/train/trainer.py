@@ -137,7 +137,7 @@ class TrainingRunConfig:
 
     condition: str
     seed: int
-    device: str = "cpu"
+    device: str = "auto"
     recipe_id: str | None = None
     artifacts_root: str | Path | None = None
     data_root: str | Path | None = None
@@ -206,6 +206,24 @@ def _resolve_artifacts_root(artifacts_root: str | Path | None) -> Path:
     if artifacts_root is None:
         return ARTIFACTS_ROOT
     return Path(artifacts_root)
+
+
+def _resolve_device(device: str) -> torch.device:
+    normalized = device.strip().lower()
+    if normalized == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    resolved = torch.device(device)
+    if resolved.type not in {"cpu", "cuda"}:
+        raise ValueError(
+            f"Only CPU and CUDA devices are supported. Received device='{device}'."
+        )
+    if resolved.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError(
+            "CUDA device requested but CUDA is not available on this host. "
+            "Use device='cpu' or device='auto'."
+        )
+    return resolved
 
 
 def _resolve_checkpoint_path(
@@ -783,7 +801,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         download=config.download,
     )
 
-    device = torch.device(config.device)
+    device = _resolve_device(config.device)
     pin_memory = bool(config.pin_memory and device.type != "cpu")
     data_generator = torch.Generator()
     data_generator.manual_seed(config.seed)
