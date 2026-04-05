@@ -8,6 +8,7 @@ from .metrics import (
     top1_num_correct,
 )
 from .trainer import (
+    ABLATION_LAYER4_RECIPE_V1,
     RUN_TABLE_COLUMNS,
     RANDOM_INIT_RECIPE_V1,
     PROBE_RECIPE_V1,
@@ -19,6 +20,7 @@ from .trainer import (
 )
 
 __all__ = [
+    "ABLATION_LAYER4_RECIPE_V1",
     "PROBE_RECIPE_V1",
     "RANDOM_INIT_RECIPE_V1",
     "RUN_TABLE_COLUMNS",

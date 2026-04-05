@@ -31,6 +31,12 @@ RUN_TABLE_COLUMNS = (
     "checkpoint_path",
 )
 
+ABLATION_TRAINING_MODES = {
+    "ablation_layer4",
+    "ablation_mode",
+    "limited_finetune",
+}
+
 
 @dataclass(frozen=True)
 class TrainingRecipe:
@@ -52,6 +58,8 @@ class TrainingRecipe:
     momentum: float | None = None
     nesterov: bool | None = None
     betas: tuple[float, float] | None = None
+    layer4_lr: float | None = None
+    classifier_lr: float | None = None
 
 
 PROBE_RECIPE_V1 = TrainingRecipe(
@@ -89,9 +97,29 @@ RANDOM_INIT_RECIPE_V1 = TrainingRecipe(
     seeds=(0, 1, 2),
 )
 
+ABLATION_LAYER4_RECIPE_V1 = TrainingRecipe(
+    recipe_id="ablation_layer4_v1",
+    training_mode="ablation_layer4",
+    optimizer="AdamW",
+    lr=1e-4,
+    weight_decay=1e-4,
+    epochs=30,
+    batch_size=64,
+    loss="cross_entropy",
+    label_smoothing=0.0,
+    grad_clip_norm=None,
+    checkpoint_selection="best_val_accuracy",
+    seeds=(0,),
+    scheduler="none",
+    betas=(0.9, 0.999),
+    layer4_lr=1e-4,
+    classifier_lr=1e-3,
+)
+
 TRAINING_RECIPES: dict[str, TrainingRecipe] = {
     PROBE_RECIPE_V1.recipe_id: PROBE_RECIPE_V1,
     RANDOM_INIT_RECIPE_V1.recipe_id: RANDOM_INIT_RECIPE_V1,
+    ABLATION_LAYER4_RECIPE_V1.recipe_id: ABLATION_LAYER4_RECIPE_V1,
 }
 
 DEFAULT_RECIPE_BY_CONDITION = {
@@ -143,11 +171,14 @@ def resolve_training_recipe(*, condition: str, recipe_id: str | None) -> Trainin
             f"got training_mode='{recipe.training_mode}'."
         )
 
-    if condition != "random_init" and recipe.training_mode != "frozen_probe":
-        raise ValueError(
-            f"Condition '{condition}' must use frozen_probe; "
-            f"got training_mode='{recipe.training_mode}'."
-        )
+    if condition != "random_init":
+        valid_modes = {"frozen_probe"} | ABLATION_TRAINING_MODES
+        if recipe.training_mode not in valid_modes:
+            valid_str = ", ".join(sorted(valid_modes))
+            raise ValueError(
+                f"Condition '{condition}' must use one of ({valid_str}); "
+                f"got training_mode='{recipe.training_mode}'."
+            )
 
     return recipe
 
@@ -205,16 +236,92 @@ def _resolve_condition_checkpoint_path(config: TrainingRunConfig) -> str | None:
     return None
 
 
-def _build_optimizer(*, model: nn.Module, recipe: TrainingRecipe) -> Optimizer:
-    trainable_parameters = [
-        parameter for parameter in model.parameters() if parameter.requires_grad
+def _build_layer4_ablation_param_groups(
+    *,
+    model: nn.Module,
+    recipe: TrainingRecipe,
+) -> list[dict[str, object]]:
+    if recipe.layer4_lr is None:
+        raise ValueError("Layer4 ablation recipe requires 'layer4_lr'.")
+    if recipe.classifier_lr is None:
+        raise ValueError("Layer4 ablation recipe requires 'classifier_lr'.")
+    if not hasattr(model.encoder, "encoder") or not hasattr(
+        model.encoder.encoder, "layer4"
+    ):
+        raise ValueError("Model encoder does not expose layer4 for ablation.")
+
+    layer4_parameters = [
+        parameter
+        for parameter in model.encoder.encoder.layer4.parameters()
+        if parameter.requires_grad
     ]
-    if not trainable_parameters:
-        raise ValueError("No trainable parameters found for optimizer construction.")
+    classifier_parameters = [
+        parameter
+        for parameter in model.classifier.parameters()
+        if parameter.requires_grad
+    ]
+    if not layer4_parameters:
+        raise ValueError("No trainable layer4 parameters found for ablation optimizer.")
+    if not classifier_parameters:
+        raise ValueError(
+            "No trainable classifier parameters found for ablation optimizer."
+        )
+
+    allowed_ids = {
+        id(parameter) for parameter in layer4_parameters + classifier_parameters
+    }
+    unexpected_trainable = [
+        name
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad and id(parameter) not in allowed_ids
+    ]
+    if unexpected_trainable:
+        raise ValueError(
+            "Found unexpected trainable parameters in ablation mode: "
+            f"{unexpected_trainable}"
+        )
+
+    return [
+        {
+            "params": layer4_parameters,
+            "lr": recipe.layer4_lr,
+            "weight_decay": recipe.weight_decay,
+        },
+        {
+            "params": classifier_parameters,
+            "lr": recipe.classifier_lr,
+            "weight_decay": recipe.weight_decay,
+        },
+    ]
+
+
+def _build_optimizer(*, model: nn.Module, recipe: TrainingRecipe) -> Optimizer:
+    use_layer4_groups = recipe.training_mode in ABLATION_TRAINING_MODES
+    parameter_groups: list[dict[str, object]] | None = None
+
+    if use_layer4_groups:
+        parameter_groups = _build_layer4_ablation_param_groups(
+            model=model, recipe=recipe
+        )
+    else:
+        trainable_parameters = [
+            parameter for parameter in model.parameters() if parameter.requires_grad
+        ]
+        if not trainable_parameters:
+            raise ValueError(
+                "No trainable parameters found for optimizer construction."
+            )
 
     if recipe.optimizer == "AdamW":
         if recipe.betas is None:
             raise ValueError("AdamW recipe requires 'betas'.")
+        if parameter_groups is not None:
+            return AdamW(
+                parameter_groups,
+                lr=recipe.lr,
+                weight_decay=recipe.weight_decay,
+                betas=recipe.betas,
+            )
         return AdamW(
             trainable_parameters,
             lr=recipe.lr,
@@ -225,6 +332,14 @@ def _build_optimizer(*, model: nn.Module, recipe: TrainingRecipe) -> Optimizer:
     if recipe.optimizer == "SGD":
         if recipe.momentum is None or recipe.nesterov is None:
             raise ValueError("SGD recipe requires momentum and nesterov values.")
+        if parameter_groups is not None:
+            return SGD(
+                parameter_groups,
+                lr=recipe.lr,
+                momentum=recipe.momentum,
+                nesterov=recipe.nesterov,
+                weight_decay=recipe.weight_decay,
+            )
         return SGD(
             trainable_parameters,
             lr=recipe.lr,
@@ -342,6 +457,83 @@ def _assert_random_init_flags(model: nn.Module) -> None:
         raise RuntimeError("random_init run has no trainable encoder parameters.")
 
 
+def _assert_layer4_ablation_flags(model: nn.Module) -> None:
+    if not hasattr(model.encoder, "encoder") or not hasattr(
+        model.encoder.encoder, "layer4"
+    ):
+        raise RuntimeError("Layer4 ablation mode requires an encoder with layer4.")
+
+    if not all(parameter.requires_grad for parameter in model.classifier.parameters()):
+        raise RuntimeError(
+            "Classifier head should be fully trainable in ablation mode."
+        )
+
+    layer4_trainable = any(
+        parameter.requires_grad
+        for parameter in model.encoder.encoder.layer4.parameters()
+    )
+    if not layer4_trainable:
+        raise RuntimeError("Layer4 ablation mode expects trainable layer4 parameters.")
+
+    non_layer4_trainable = [
+        name
+        for name, parameter in model.encoder.encoder.named_parameters()
+        if not name.startswith("layer4.") and parameter.requires_grad
+    ]
+    if non_layer4_trainable:
+        raise RuntimeError(
+            "Found non-layer4 trainable encoder parameters in ablation mode: "
+            f"{non_layer4_trainable}"
+        )
+
+
+def _first_layer4_parameter(model: nn.Module) -> torch.Tensor:
+    return next(model.encoder.encoder.layer4.parameters())
+
+
+def _first_non_layer4_encoder_parameter(model: nn.Module) -> torch.Tensor | None:
+    for name, parameter in model.encoder.encoder.named_parameters():
+        if not name.startswith("layer4."):
+            return parameter
+    return None
+
+
+def _assert_layer4_ablation_gradients(model: nn.Module) -> torch.Tensor:
+    layer4_has_grad = any(
+        parameter.grad is not None and torch.count_nonzero(parameter.grad).item() > 0
+        for parameter in model.encoder.encoder.layer4.parameters()
+        if parameter.requires_grad
+    )
+    classifier_has_grad = any(
+        parameter.grad is not None and torch.count_nonzero(parameter.grad).item() > 0
+        for parameter in model.classifier.parameters()
+        if parameter.requires_grad
+    )
+    frozen_encoder_has_grad = any(
+        parameter.grad is not None and torch.count_nonzero(parameter.grad).item() > 0
+        for name, parameter in model.encoder.encoder.named_parameters()
+        if not name.startswith("layer4.")
+    )
+
+    if not layer4_has_grad:
+        raise RuntimeError(
+            "Layer4 parameters did not receive gradients in ablation mode."
+        )
+    if not classifier_has_grad:
+        raise RuntimeError("Classifier did not receive gradients in ablation mode.")
+    if frozen_encoder_has_grad:
+        raise RuntimeError(
+            "Frozen non-layer4 encoder parameters received gradients in ablation mode."
+        )
+
+    return _first_layer4_parameter(model).detach().clone()
+
+
+def _assert_layer4_updated(model: nn.Module, before: torch.Tensor) -> None:
+    if torch.equal(_first_layer4_parameter(model).detach(), before):
+        raise RuntimeError("Layer4 parameters did not update after optimizer step.")
+
+
 def _train_one_epoch(
     *,
     model: nn.Module,
@@ -352,6 +544,7 @@ def _train_one_epoch(
     grad_clip_norm: float | None,
     run_sanity_checks: bool,
     is_frozen_probe: bool,
+    is_layer4_ablation: bool,
 ) -> dict[str, float]:
     model.train()
 
@@ -370,10 +563,16 @@ def _train_one_epoch(
         bn_snapshot: list[tuple[torch.Tensor, torch.Tensor]] | None = None
         frozen_param_before: torch.Tensor | None = None
         random_init_param_before: torch.Tensor | None = None
+        layer4_param_before: torch.Tensor | None = None
+        frozen_non_layer4_before: torch.Tensor | None = None
         if run_sanity_checks and not sanity_done and batch_index == 0:
             if is_frozen_probe:
                 bn_snapshot = _snapshot_encoder_bn_stats(model.encoder)
                 frozen_param_before = next(model.encoder.parameters()).detach().clone()
+            elif is_layer4_ablation:
+                frozen_non_layer4 = _first_non_layer4_encoder_parameter(model)
+                if frozen_non_layer4 is not None:
+                    frozen_non_layer4_before = frozen_non_layer4.detach().clone()
 
         logits = model(images)
         loss = criterion(logits, targets)
@@ -390,6 +589,8 @@ def _train_one_epoch(
                         "Missing BatchNorm snapshot for frozen sanity check."
                     )
                 _assert_bn_stats_unchanged(model.encoder, bn_snapshot)
+            elif is_layer4_ablation:
+                layer4_param_before = _assert_layer4_ablation_gradients(model)
             else:
                 random_init_param_before = _assert_random_init_gradients(model)
 
@@ -407,6 +608,22 @@ def _train_one_epoch(
                     raise RuntimeError(
                         "Frozen encoder weights changed after optimizer step."
                     )
+            elif is_layer4_ablation:
+                if layer4_param_before is None:
+                    raise RuntimeError("Missing layer4 parameter snapshot.")
+                _assert_layer4_updated(model, layer4_param_before)
+                if frozen_non_layer4_before is not None:
+                    current_frozen = _first_non_layer4_encoder_parameter(model)
+                    if current_frozen is None:
+                        raise RuntimeError(
+                            "Missing non-layer4 encoder parameter for ablation check."
+                        )
+                    if not torch.equal(
+                        current_frozen.detach(), frozen_non_layer4_before
+                    ):
+                        raise RuntimeError(
+                            "Frozen non-layer4 encoder parameter changed after optimizer step."
+                        )
             else:
                 if random_init_param_before is None:
                     raise RuntimeError("Missing random-init parameter snapshot.")
@@ -495,8 +712,11 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
     )
 
     is_frozen_probe = recipe.training_mode == "frozen_probe"
+    is_layer4_ablation = recipe.training_mode in ABLATION_TRAINING_MODES
     if is_frozen_probe:
         _assert_encoder_frozen_flags(model)
+    elif is_layer4_ablation:
+        _assert_layer4_ablation_flags(model)
     else:
         _assert_random_init_flags(model)
 
@@ -519,6 +739,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
             grad_clip_norm=recipe.grad_clip_norm,
             run_sanity_checks=bool(config.sanity_checks and epoch == 1),
             is_frozen_probe=is_frozen_probe,
+            is_layer4_ablation=is_layer4_ablation,
         )
 
         val_metrics = evaluate_model(
