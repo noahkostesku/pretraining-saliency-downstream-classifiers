@@ -16,7 +16,7 @@ We aim to provide findings on the following:
 - whether higher downstream accuracy coincides with more faithful or more object-centered explanations
 - whether the learned representation appears more or less useful through the behavior of the downstream model
 
-We carry out 8 stages in our processes to complete end-to-end training and analysis of our results:
+We carry out 8 stages in our process to complete end-to-end training and analysis of our results:
 
 1. Load and prepare encoders 
 2. Make splits 
@@ -73,88 +73,128 @@ There is notebook code for both training and analysis and CLI for only training.
 
 ```text
 cv/
-├── README.md                              # Setup instructions and project overview
-├── plan.md                                # High-level study design and experimental framing
-├── pyproject.toml                         # Python package metadata and dependencies
-├── main.py                                # Minimal entrypoint; can later dispatch CLI tasks
+├── README.md                             
+├── pyproject.toml                         
+├── uv.lock                                
 ├── docs/
-│   ├── 02-03-downstream-trainings-and-split.md  # STL-10 split protocol and shared wrapper design
-│   ├── 04-trainprobes.md                  # Frozen linear-probe training plan
-│   ├── 05-06-explainability.md            # Grad-CAM and Occlusion generation plan
-│   ├── 07-eval-explain.md                 # Insertion/deletion AUC evaluation plan
-│   ├── 08-opt-fine-tuning.md              # Optional limited fine-tuning ablation notes
-│   ├── 09-gradCam++.md                    # Grad-CAM++ diagnostics plan
-│   └── stage01/
-│       ├── 01-encoder-prep.md             # Stage-1 detailed implementation checklist
-│       └── results.md                     # Stage-1 notes/results log
+│   ├── training-specification.md        
+│   └── saliency-analysis-deep-dive.md     
 ├── src/
 │   └── cv/
-│       ├── __init__.py                    # Package marker
+│       ├── __init__.py                    
 │       ├── config/
-│       │   ├── __init__.py                # Centralized config exports
-│       │   ├── base.py                    # Shared path and root configuration
-│       │   └── encoders.py                # Stage-1 checkpoint configuration defaults
-│       ├── transforms.py                  # Shared torchvision transform builders
+│       │   ├── __init__.py                
+│       │   ├── base.py                    # Shared path and root configs 
+│       │   └── encoders.py                # encoder configs 
+│       ├── transforms.py                  # transform builders for augmentation
 │       ├── utils/
-│       │   ├── __init__.py                # Utility package marker
-│       │   ├── seed.py                    # Seed-setting helpers for reproducible runs
-│       │   ├── io.py                      # JSON/CSV/NPY read-write helpers for artifacts
-│       │   ├── logging.py                 # Lightweight experiment logging helpers
-│       │   └── device.py                  # CPU/GPU device selection helpers
+│       │   ├── __init__.py                
+│       │   ├── seed.py                    # Seed-setting helpers
+│       │   ├── io.py                      # I/O helpers 
+│       │   ├── logging.py                 # Logging helpers 
+│       │   └── device.py                  # CPU/CUDA routing helper 
 │       ├── data/
-│       │   ├── __init__.py                # Data package marker
-│       │   ├── stl10.py                   # STL-10 dataset loading and transform wiring
-│       │   ├── splits.py                  # Fixed stratified split creation and loading
-│       │   └── subset.py                  # Fixed explanation subset creation and reuse
+│       │   ├── __init__.py                
+│       │   ├── stl10.py                   # STL-10 dataset loading and transforms
+│       │   ├── splits.py                  # make stratified splits 
+│       │   └── subset.py                  # Fixed explanation subset split maker 
 │       ├── encoders/
-│       │   ├── __init__.py                # Encoder registry exports
-│       │   ├── registry.py                # Condition names mapped to loader functions
-│       │   ├── supervised.py              # Supervised ResNet-50 checkpoint loader
+│       │   ├── __init__.py                
+│       │   ├── registry.py                # Encoder routing based on encoder name 
+│       │   ├── supervised.py              # Supervised ResNet-50 checkpoint loader 
 │       │   ├── moco.py                    # MoCo ResNet-50 checkpoint loader
 │       │   ├── swav.py                    # SwaV ResNet-50 checkpoint loader
 │       │   └── wrapper.py                 # Unified encoder wrapper exposing pooled 2048-D features
 │       ├── models/
 │       │   ├── __init__.py                
-│       │   ├── linear_probe.py            # Frozen encoder + linear head model definition
-│       │   └── downstream.py              # Shared downstream wrapper with freeze controls
+│       │   ├── linear_probe.py            # Frozen encoder + linear head definition
+│       │   └── downstream.py              # Shared downstream wrapper
 │       ├── train/
-│       │   ├── __init__.py                # Training package marker
-│       │   ├── trainer.py                 # Shared training loop and validation checkpointing
-│       │   ├── evaluate.py                # Accuracy evaluation utilities
+│       │   ├── __init__.py                
+│       │   ├── trainer.py                 # Training loop and validation checkpointing
+│       │   ├── evaluate.py                # Accuracy evaluation utils 
 │       │   └── metrics.py                 # Top-1 accuracy and summary aggregation helpers
 │       ├── explain/
 │       │   ├── __init__.py                
 │       │   ├── gradcam.py                 # Grad-CAM
 │       │   ├── occlusion.py               # Occlusion map 
 │       │   ├── targets.py                 # target score defs for prediction class 
-│       │   ├── saliency_io.py             # map save/load and normalization helpers 
-│       │   ├── pipeline.py                # stage-5 explanation generation orchestration
-│       │   └── qc.py                      # stage-6 saliency quality checks
+│       │   ├── saliency_io.py             # saliency I/O and normalization helpers
+│       │   ├── pipeline.py                # saliency generation pipeline 
+│       │   └── qc.py                      # saliency quality checks
 │       └── analysis/
 │           ├── __init__.py                
-│           ├── curves.py                  # IAUC/DAUC
+│           ├── curves.py                  # IAUC/DAUC functions 
 │           ├── insertion_deletion.py      # perturbation helper 
 │           ├── auc.py                     # auc plot helper 
 │           ├── bootstrap.py               # bootstrap
 │           └── summarize.py               # aggregate results 
 ├── scripts/
 │   ├── make_splits.py                     # for STL-10 train/val split indices
-│   ├── inspect_encoders.py                # test encoders 
+│   ├── inspect_encoders.py                # CLI for testing encoders 
 │   ├── prepare_encoders.py                # download/prepare checkpoints, then run inspection
 │   ├── train_linear_probe.py              # training for linear probing 
 │   ├── run_probe_grid.py                  # launch all encoder/seed probe runs
 │   ├── summarize_probe_results.py         # aggregate accuracy mean +- std across seeds
 │   ├── export_eval_subset.py              # sample and save the fixed explanation evaluation subset
 │   ├── generate_explanations.py           # generate Grad-CAM/Grad-CAM++/Occlusion maps for saved checkpoints
-│   └── qc_explanations.py                 # run Stage-6 saliency map QC checks
+│   ├── qc_explanations.py                 # run Stage-6 saliency map QC checks
+│   └── sharcnet/
+│       └── sbatch_gpu_probe_pipeline.sh   # Bash script for GPU run 
 ├── notebooks/
 │   ├── run.ipynb                          # End-to-end orchestration notebook (stages 1-6 + reporting)
-│   └── analysis.ipynb                     # Stage 7-9 analysis notebook (faithfulness, ablation, Grad-CAM++)
+│   └── analysis.ipynb                     # Analysis notebook (faithfulness + Grad-CAM++ diagnostics)
 ├── artifacts/
-│   ├── splits/                            # Saved train/val indices and explanation subset ids
-│   ├── checkpoints/                       # Saved probe model checkpoints by condition and seed
-│   ├── metrics/                           # CSV/JSON summaries for accuracy and explanation scores
-│   └── saliency/                          # Saved saliency maps and per-image metadata
+│   ├── checkpoints/                       # Saved probe model checkpoints by condition and seed (gitignored)
+│   ├── saliency/                          # Saved saliency maps and per-image metadata (gitignored)
+│   ├── splits/                            # Split indices/metadata generated by pipeline
+│   │   ├── stl10_train_indices.json
+│   │   ├── stl10_val_indices.json
+│   │   └── stl10_split_metadata.json
+│   └── metrics/                           # Tracked output results (JSON/CSV/PNG)
+│       ├── encoder_prep_report.json
+│       ├── encoder_prep_report_notebook.json
+│       ├── probe_runs/
+│       │   ├── run_table.csv
+│       │   ├── run_table.json
+│       │   ├── supervised/
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.json
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.batch_losses.csv
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.epoch_losses.csv
+│       │   │   └── seed_<0|1|2>_probe_recipe_v1.loss_curve.png
+│       │   ├── moco/                      # same file set as supervised for seeds 0,1,2
+│       │   ├── swav/                      # same file set as supervised for seeds 0,1,2
+│       │   └── random_init/
+│       │       ├── seed_<0|1|2>_random_init_recipe_v1.json
+│       │       ├── seed_<0|1|2>_random_init_recipe_v1.batch_losses.csv
+│       │       ├── seed_<0|1|2>_random_init_recipe_v1.epoch_losses.csv
+│       │       └── seed_<0|1|2>_random_init_recipe_v1.loss_curve.png
+│       ├── saliency/
+│       │   ├── generation_manifest.json
+│       │   └── qc_report.json
+│       ├── faithfulness/
+│       │   ├── per_image_scores.csv
+│       │   ├── per_image_scores.json
+│       │   ├── seed_level_scores.csv
+│       │   ├── condition_summary.csv
+│       │   ├── paired_stats_primary.csv
+│       │   └── figures/
+│       │       ├── primary_auc_by_condition_method.png
+│       │       ├── accuracy_vs_faithfulness.png
+│       │       └── confidence_vs_insertion_auc.png
+│       ├── gradcampp_diagnostics/
+│       │   ├── seed_level_method_and_delta_scores.csv
+│       │   ├── seed_level_deltas.csv
+│       │   ├── condition_level_deltas.csv
+│       │   ├── outcome_label.json
+│       │   └── diagnostics_note.json
+│       └── faithfulness_repro_seed0/
+│           ├── insertion_deletion_auc_primary_seed0.csv
+│           ├── condition_summary.csv
+│           ├── seed_level_scores.csv
+│           ├── test_accuracy_seed0.csv
+│           └── figures/
+│               └── primary_auc_by_condition_method_seed0.png
 ├── data/
 │   ├── raw/                               # Downloaded STL-10 files
 │   ├── processed/                         # Cached processed outputs if needed
@@ -448,5 +488,4 @@ This section describes the order of the processes we do for end-to-end training 
 Investigate semantic meaning of encoders: “What does each encoder embedding dimension mean, semantically, and do they provide meaningful signals for downstream classification tasks?”
 
 Using concept probing, activation maximization, nearest-neighbor retrieval in feature space, feature visualization, concept alignment or TCAV-style analysis, which is out of scope for the current project. 
-
 
