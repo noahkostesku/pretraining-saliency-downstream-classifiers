@@ -4,11 +4,9 @@
 
 "Do different encoders produce representations that support better downstream classification, and do the resulting end-to-end decisions rely on behaviorally important and visually plausible image regions?"
 
-ALT: Can I compare how useful different learned representations are for downstream classification, and whether the resulting decisions are grounded in faithful and visually plausible image regions?
+We aim to determine whether we can I compare how useful different learned representations are for downstream classification, and whether the resulting decisions are grounded in faithful and visually plausible image regions?
 
-- We evaluate whether different pretrained encoders yield representations that transfer well to STL-10 under linear probing, and whether the resulting downstream decisions are supported by faithful and visually plausible saliency regions
-
-ALT: "whether different pretrained encoders provide more transferable representations for downstream classification, and whether the resulting predictions rely on faithful and visually plausible image evidence"
+We evaluate whether different pretrained encoders yield representations that transfer well to STL-10 under linear probing, and whether the resulting downstream decisions are supported by faithful and visually plausible saliency regions
 
 - We use PyTorch for models and training, Numpy for saliency arrays and sklearn for straified splitting for the validation set for downstream training and AUC helper functions for evaluating GradCAM saliency maps.
 
@@ -17,12 +15,6 @@ We aim to provide findings on the following:
 - whether some encoder-based pipelines produce more faithful saliency maps than others
 - whether higher downstream accuracy coincides with more faithful or more object-centered explanations
 - whether the learned representation appears more or less useful through the behavior of the downstream model
-
-## Potential Next Steps
-
-Investigate semantic meaning of encoders: “What does each encoder embedding dimension mean, semantically, and do they provide meaningful signals for downstream classification tasks?”
-
-Using concept probing, activation maximization, nearest-neighbor retrieval in feature space, feature visualization, concept alignment or TCAV-style analysis, which is out of scope for the current project. 
 
 ## Setup
 
@@ -35,6 +27,23 @@ uv sync # install packages
 ```
 
 **IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
+
+### Notes for reproducing
+
+Training took ~20 hours on a CPU. To speed up training, a GPU setup was used and is recommended if you intend to use our training pipeline to rerproduce and train models.
+
+For reproducing our analysis results, please unzip the `.zip` provided in `artifacts/bundles` with the following command:
+
+```bash
+mkdir -p artifacts/bundles
+cd artifacts && zip -r bundles/seed0_probe_checkpoints.zip \
+  checkpoints/supervised/seed_0_probe_recipe_v1.pt \
+  checkpoints/moco/seed_0_probe_recipe_v1.pt \
+  checkpoints/swav/seed_0_probe_recipe_v1.pt \
+  checkpoints/random_init/seed_0_random_init_recipe_v1.pt
+```
+
+After running the command above, you can run the dedicated code cell to reproduce our results quickly without running the full notebook in `analysis.ipynb`. Alternatively, you can refer to `notebooks/analysis.ipynb` for reproducing instructions and running relevant analysis code.
 
 # Project Structure 
 
@@ -416,7 +425,15 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 
 # Notes 
 
-* We used `.py` files for all reusable logic, dataset handling, model loading, training, and metric computation. 
-* Notebooks are used as orchestration and inspection layers (for example `notebooks/run.ipynb`), while reusable pipeline logic stays in `src/cv/` and `scripts/`.
+* We used `.py` files for all reusable logic, dataset handling, model loading, training, and metric computation, and imported those Python modules to run training and analysis via both CLI and notebooks.
+* Notebooks are used as orchestration and inspection layers (for example `notebooks/run.ipynb`), while reusable pipeline logic stays in `src/cv/` and `scripts/` for CLI.
 * We saved any notebook-produced plots and images to `artifacts/saliency/` and `artifacts/metrics/` so results stay reproducible.
-* The active config source of truth is `src/cv/config/`; root-level `configs/*.yaml` are legacy placeholders and can be removed once no longer needed for documentation.
+
+
+## Potential Next Steps
+
+Investigate semantic meaning of encoders: “What does each encoder embedding dimension mean, semantically, and do they provide meaningful signals for downstream classification tasks?”
+
+Using concept probing, activation maximization, nearest-neighbor retrieval in feature space, feature visualization, concept alignment or TCAV-style analysis, which is out of scope for the current project. 
+
+
