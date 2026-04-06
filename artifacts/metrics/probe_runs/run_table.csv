@@ -1,0 +1,3 @@
+condition,training_mode,recipe_id,seed,best_val_acc,test_acc,best_epoch,checkpoint_path
+random_init,full_train_random_init,random_init_recipe_v1,1,0.684,0.66375,80,/lustre06/project/6040457/noahkost/cnn-benchmark/pretraining-saliency-downstream-classifiers/artifacts/checkpoints/random_init/seed_1_random_init_recipe_v1.pt
+random_init,full_train_random_init,random_init_recipe_v1,2,0.681,0.67575,91,/lustre06/project/6040457/noahkost/cnn-benchmark/pretraining-saliency-downstream-classifiers/artifacts/checkpoints/random_init/seed_2_random_init_recipe_v1.pt

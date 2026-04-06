@@ -87,6 +87,19 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip first-batch gradient and BatchNorm sanity checks.",
     )
+    parser.add_argument(
+        "--no-amp",
+        action="store_true",
+        help="Disable CUDA automatic mixed precision (train/eval in fp32 on GPU).",
+    )
+    parser.add_argument(
+        "--no-strict-repro",
+        action="store_true",
+        help=(
+            "Disable strict reproducibility: allow cudnn.benchmark and CUDA AMP for speed "
+            "(not bitwise reproducible)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -108,6 +121,8 @@ def main() -> None:
         moco_checkpoint_path=args.moco_checkpoint,
         swav_checkpoint_path=args.swav_checkpoint,
         sanity_checks=not args.skip_sanity_checks,
+        use_amp=not args.no_amp,
+        strict_reproducibility=not args.no_strict_repro,
     )
 
     result = train_one_run(config)

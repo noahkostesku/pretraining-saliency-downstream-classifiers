@@ -1,0 +1,22 @@
+[
+  {
+    "condition": "random_init",
+    "training_mode": "full_train_random_init",
+    "recipe_id": "random_init_recipe_v1",
+    "seed": 1,
+    "best_val_acc": 0.684,
+    "test_acc": 0.66375,
+    "best_epoch": 80,
+    "checkpoint_path": "/lustre06/project/6040457/noahkost/cnn-benchmark/pretraining-saliency-downstream-classifiers/artifacts/checkpoints/random_init/seed_1_random_init_recipe_v1.pt"
+  },
+  {
+    "condition": "random_init",
+    "training_mode": "full_train_random_init",
+    "recipe_id": "random_init_recipe_v1",
+    "seed": 2,
+    "best_val_acc": 0.681,
+    "test_acc": 0.67575,
+    "best_epoch": 91,
+    "checkpoint_path": "/lustre06/project/6040457/noahkost/cnn-benchmark/pretraining-saliency-downstream-classifiers/artifacts/checkpoints/random_init/seed_2_random_init_recipe_v1.pt"
+  }
+]

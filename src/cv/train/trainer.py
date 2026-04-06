@@ -1,12 +1,17 @@
 """Shared training loop and validation checkpointing logic."""
 
+import contextlib
 import csv
+import os
+import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from torch import nn
+from torch.amp import GradScaler, autocast
 from torch.optim import SGD, AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
@@ -133,7 +138,13 @@ DEFAULT_RECIPE_BY_CONDITION = {
 
 @dataclass(frozen=True)
 class TrainingRunConfig:
-    """Single-run training configuration for one condition and seed."""
+    """Single-run training configuration for one condition and seed.
+
+    When ``strict_reproducibility`` is True (default): deterministic cuDNN, no ``cudnn.benchmark``,
+    CUDA AMP is disabled (fp32 on GPU), per-worker DataLoader seeds, cuBLAS workspace config,
+    and ``torch.use_deterministic_algorithms(..., warn_only=True)``. Use ``--no-strict-repro``
+    on CLIs to allow AMP + benchmark for speed.
+    """
 
     condition: str
     seed: int
@@ -152,6 +163,8 @@ class TrainingRunConfig:
     log_every_n_batches: int = 1
     save_loss_history: bool = True
     save_loss_plot: bool = True
+    use_amp: bool = True
+    strict_reproducibility: bool = True
 
 
 def resolve_training_recipe(*, condition: str, recipe_id: str | None) -> TrainingRecipe:
@@ -224,6 +237,29 @@ def _resolve_device(device: str) -> torch.device:
             "Use device='cpu' or device='auto'."
         )
     return resolved
+
+
+def _resolve_cuda_amp(
+    *, device: torch.device, use_amp: bool
+) -> tuple[bool, torch.dtype, GradScaler | None]:
+    """Return (autocast_enabled, amp_dtype, grad_scaler_or_none) for training steps."""
+    if device.type != "cuda" or not use_amp:
+        return False, torch.float32, None
+    if torch.cuda.is_bf16_supported():
+        return True, torch.bfloat16, None
+    return True, torch.float16, GradScaler("cuda")
+
+
+def _dataloader_worker_init_fn(base_seed: int):
+    """Per-worker seeds for reproducible shuffling when num_workers > 0."""
+
+    def _seed_worker(worker_id: int) -> None:
+        w_seed = (int(base_seed) + int(worker_id)) % 2**32
+        random.seed(w_seed)
+        np.random.seed(w_seed)
+        torch.manual_seed(w_seed)
+
+    return _seed_worker
 
 
 def _resolve_checkpoint_path(
@@ -639,6 +675,9 @@ def _train_one_epoch(
     global_step_start: int,
     verbose_batch_logging: bool,
     log_every_n_batches: int,
+    amp_enabled: bool,
+    amp_dtype: torch.dtype,
+    scaler: GradScaler | None,
 ) -> dict[str, Any]:
     model.train()
 
@@ -673,13 +712,26 @@ def _train_one_epoch(
                 if frozen_non_layer4 is not None:
                     frozen_non_layer4_before = frozen_non_layer4.detach().clone()
 
-        logits = model(images)
-        loss = criterion(logits, targets)
-        loss_value = float(loss.item())
+        if device.type == "cuda":
+            forward_ctx = autocast(
+                device_type="cuda",
+                dtype=amp_dtype,
+                enabled=amp_enabled,
+            )
+        else:
+            forward_ctx = contextlib.nullcontext()
+
+        with forward_ctx:
+            logits = model(images)
+            loss = criterion(logits, targets)
+        loss_value = float(loss.detach().float().item())
         batch_size = targets.shape[0]
         batch_correct = top1_num_correct(logits, targets)
 
-        loss.backward()
+        if scaler is not None:
+            scaler.scale(loss).backward()
+        else:
+            loss.backward()
 
         if run_sanity_checks and not sanity_done and batch_index == 0:
             if is_frozen_probe:
@@ -695,9 +747,15 @@ def _train_one_epoch(
                 random_init_param_before = _assert_random_init_gradients(model)
 
         if grad_clip_norm is not None:
+            if scaler is not None:
+                scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip_norm)
 
-        optimizer.step()
+        if scaler is not None:
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            optimizer.step()
 
         if run_sanity_checks and not sanity_done and batch_index == 0:
             if is_frozen_probe:
@@ -791,7 +849,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         training_mode=recipe.training_mode,
     )
 
-    set_seed(config.seed)
+    set_seed(config.seed, deterministic_torch=config.strict_reproducibility)
 
     split_artifacts = load_fixed_split_indices(artifacts_root=config.artifacts_root)
     datasets = build_downstream_datasets(
@@ -802,9 +860,45 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
     )
 
     device = _resolve_device(config.device)
+
+    if config.strict_reproducibility and device.type == "cuda":
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.use_deterministic_algorithms(True, warn_only=True)
+
+    if device.type == "cuda" and not config.strict_reproducibility:
+        torch.backends.cudnn.benchmark = True
+
+    effective_use_amp = bool(config.use_amp and not config.strict_reproducibility)
+    if config.strict_reproducibility and config.use_amp:
+        print(
+            "[repro] strict_reproducibility=True disables CUDA AMP; training/eval use fp32 on GPU."
+        )
+
+    amp_enabled, amp_dtype, scaler = _resolve_cuda_amp(
+        device=device, use_amp=effective_use_amp
+    )
+    if device.type == "cuda":
+        print(
+            f"[amp] cuda autocast={'on' if amp_enabled else 'off'} "
+            f"dtype={amp_dtype} grad_scaler={'on' if scaler is not None else 'off'}"
+        )
+    print(
+        f"[repro] strict_reproducibility={config.strict_reproducibility} "
+        f"cudnn_deterministic={torch.backends.cudnn.deterministic} "
+        f"cudnn_benchmark={torch.backends.cudnn.benchmark}"
+    )
+
     pin_memory = bool(config.pin_memory and device.type != "cpu")
     data_generator = torch.Generator()
     data_generator.manual_seed(config.seed)
+
+    worker_init_fn = (
+        _dataloader_worker_init_fn(config.seed)
+        if config.strict_reproducibility and config.num_workers > 0
+        else None
+    )
 
     train_loader = DataLoader(
         datasets.train,
@@ -813,6 +907,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         num_workers=config.num_workers,
         pin_memory=pin_memory,
         generator=data_generator,
+        worker_init_fn=worker_init_fn,
     )
     val_loader = DataLoader(
         datasets.val,
@@ -820,6 +915,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         shuffle=False,
         num_workers=config.num_workers,
         pin_memory=pin_memory,
+        worker_init_fn=worker_init_fn,
     )
     test_loader = DataLoader(
         datasets.test,
@@ -827,6 +923,7 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         shuffle=False,
         num_workers=config.num_workers,
         pin_memory=pin_memory,
+        worker_init_fn=worker_init_fn,
     )
 
     model = build_downstream_model(
@@ -876,6 +973,9 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
             global_step_start=global_step,
             verbose_batch_logging=config.verbose_batch_logging,
             log_every_n_batches=config.log_every_n_batches,
+            amp_enabled=amp_enabled,
+            amp_dtype=amp_dtype,
+            scaler=scaler,
         )
         global_step = int(train_metrics["next_global_step"])
         batch_loss_history.extend(train_metrics["batch_history"])
@@ -885,6 +985,8 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
             dataloader=val_loader,
             criterion=criterion,
             device=device,
+            amp_enabled=amp_enabled,
+            amp_dtype=amp_dtype,
         )
 
         if scheduler is not None:
@@ -924,6 +1026,8 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
                 "training_mode": recipe.training_mode,
                 "recipe": asdict(recipe),
             }
+            if scaler is not None:
+                payload["grad_scaler_state_dict"] = scaler.state_dict()
             ensure_parent(checkpoint_path)
             torch.save(payload, checkpoint_path)
 
@@ -940,6 +1044,8 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         dataloader=test_loader,
         criterion=criterion,
         device=device,
+        amp_enabled=amp_enabled,
+        amp_dtype=amp_dtype,
     )
 
     run_result: dict[str, Any] = {
@@ -956,6 +1062,9 @@ def train_one_run(config: TrainingRunConfig | None = None) -> dict[str, Any]:
         "split_metadata_path": str(split_artifacts.metadata_path),
         "device": str(device),
         "epoch_history": epoch_history,
+        "cuda_amp_enabled": amp_enabled,
+        "cuda_amp_dtype": str(amp_dtype) if amp_enabled else "float32",
+        "strict_reproducibility": config.strict_reproducibility,
     }
 
     loss_paths = _resolve_loss_artifact_paths(config=config, recipe=recipe)
