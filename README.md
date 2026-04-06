@@ -151,55 +151,59 @@ cv/
 │   │   ├── stl10_train_indices.json
 │   │   ├── stl10_val_indices.json
 │   │   └── stl10_split_metadata.json
-│   └── metrics/                           # Tracked output results (JSON/CSV/PNG)
-│       ├── encoder_prep_report.json
-│       ├── encoder_prep_report_notebook.json
+│   └── metrics/                           
+│       ├── encoder_prep_report.json # metadata for encoder preprocessing and checks
+│       ├── encoder_prep_report_notebook.json # notebook metadata for encoder prep
 │       ├── probe_runs/
-│       │   ├── run_table.csv
-│       │   ├── run_table.json
+│       │   ├── run_table.csv # run level metrics for training models in CSV
+│       │   ├── run_table.json # in JSON 
 │       │   ├── supervised/
-│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.json
-│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.batch_losses.csv
-│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.epoch_losses.csv
-│       │   │   └── seed_<0|1|2>_probe_recipe_v1.loss_curve.png
-│       │   ├── moco/                      # same file set as supervised for seeds 0,1,2
-│       │   ├── swav/                      # same file set as supervised for seeds 0,1,2
-│       │   └── random_init/
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.json # single run metric and checkpoint metadata 
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.batch_losses.csv # per batch training loss 
+│       │   │   ├── seed_<0|1|2>_probe_recipe_v1.epoch_losses.csv # per epcoh train/valoss, accuracy and learning rate 
+│       │   │   └── seed_<0|1|2>_probe_recipe_v1.loss_curve.png train vs val loss curve visualization image 
+│       │   ├── moco/                      # same file set as supervised
+│       │   ├── swav/                      # same file set as supervised
+│       │   └── random_init/               # same file set as moco and swav
 │       │       ├── seed_<0|1|2>_random_init_recipe_v1.json
 │       │       ├── seed_<0|1|2>_random_init_recipe_v1.batch_losses.csv
 │       │       ├── seed_<0|1|2>_random_init_recipe_v1.epoch_losses.csv
 │       │       └── seed_<0|1|2>_random_init_recipe_v1.loss_curve.png
 │       ├── saliency/
-│       │   ├── generation_manifest.json
-│       │   └── qc_report.json
+│       │   ├── generation_manifest.json # per image saliency manifest file
+│       │   └── qc_report.json # saliency coverage and quality checks 
 │       ├── faithfulness/
-│       │   ├── per_image_scores.csv
-│       │   ├── per_image_scores.json
-│       │   ├── seed_level_scores.csv
-│       │   ├── condition_summary.csv
-│       │   ├── paired_stats_primary.csv
+│       │   ├── per_image_scores.csv # per image faithfulness scores and flip flags in CSV
+│       │   ├── per_image_scores.json # in JSON 
+│       │   ├── seed_level_scores.csv # seed-level averaged faithfulness metrics table
+│       │   ├── condition_summary.csv # encoder-level mean and std faithfulness
+│       │   ├── paired_stats_primary.csv # Primary-slice paired bootstrap/permutation stats table 
 │       │   └── figures/
-│       │       ├── primary_auc_by_condition_method.png
-│       │       ├── accuracy_vs_faithfulness.png
-│       │       └── confidence_vs_insertion_auc.png
+│       │       ├── primary_auc_by_condition_method.png # primary-slice AUC nar graph by method 
+│       │       ├── accuracy_vs_faithfulness.png # test accuracy vs insertion AUC scatter plot 
+│       │       └── confidence_vs_insertion_auc.png # confidence vs insertion AUC scatter plot 
 │       ├── gradcampp_diagnostics/
-│       │   ├── seed_level_method_and_delta_scores.csv
-│       │   ├── seed_level_deltas.csv
-│       │   ├── condition_level_deltas.csv
-│       │   ├── outcome_label.json
-│       │   └── diagnostics_note.json
+│       │   ├── seed_level_method_and_delta_scores.csv # seed-level grad-CAM/grad-CAM++ scores and deltas 
+│       │   ├── seed_level_deltas.csv # seed-level method-delta summary stats 
+│       │   ├── condition_level_deltas.csv # condition-level grad-CAM++ stats
+│       │   ├── outcome_label.json # final diagnostics outcome labels 
+│       │   └── diagnostics_note.json # diagnostics interpretation and sample counts
 │       └── faithfulness_repro_seed0/
-│           ├── insertion_deletion_auc_primary_seed0.csv
-│           ├── condition_summary.csv
-│           ├── seed_level_scores.csv
-│           ├── test_accuracy_seed0.csv
+│           ├── insertion_deletion_auc_primary_seed0.csv # IAUC/DAUC means for models with seed 0
+│           ├── condition_summary.csv # seed 0's models' faithfulness summary
+│           ├── seed_level_scores.csv # method level faithfulness scores for seed 0 models
+│           ├── test_accuracy_seed0.csv # accuracy on the test set for seed 0 models 
 │           └── figures/
-│               └── primary_auc_by_condition_method_seed0.png
+│               └── primary_auc_by_condition_method_seed0.png # primary slice AUC comparison plot for seed 0 models
 ├── data/
 │   ├── raw/                               # Downloaded STL-10 files
 │   ├── processed/                         # Cached processed outputs if needed
 │   └── external/                          # Optional external checkpoint files
 ```
+
+For more details on the outputs produced and what they mean, please refer to the notebook's explanations and the docs: `docs/training-specification.md` for training details, and `docs/saliency.md` for saliency methods done and more details on the outputs produced in `artifacts/metrics` shown above.
+
+Model checkpoints are stored in `artifacts/checkpoints`, which is gitignored.
 
 # Training via CLI 
 
