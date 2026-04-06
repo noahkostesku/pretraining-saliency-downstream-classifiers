@@ -13,6 +13,15 @@ wheels/
 artifacts/checkpoints/
 artifacts/splits/
 artifacts/saliency/
+!artifacts/saliency/gradcampp_diagnostics/main_panel/seed0_fixed_ids_panel.png
+artifacts/bundles/
+artifacts/metrics/faithfulness/faithfulness/
+artifacts/metrics/gradcampp_diagnostics/faithfulness/
+artifacts/**/per_image_scores.json
+artifacts/**/per_image_scores.csv
+artifacts/**/per_image_scores_checkpoint.csv
+artifacts/**/batch_losses.json
+artifacts/**/batch_losses.csv
 
-notebooks/.ipynb_checkpoints
+**/.ipynb_checkpoints
 AGENTS.md
