@@ -1,0 +1,297 @@
+{
+  "num_rows": 7200,
+  "num_errors": 0,
+  "expected_subset_count": 200,
+  "coverage": [
+    {
+      "condition": "moco",
+      "seed": 0,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 0,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 0,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 1,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 1,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 1,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 2,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 2,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "moco",
+      "seed": 2,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 0,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 0,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 0,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 1,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 1,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 1,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 2,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 2,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "random_init",
+      "seed": 2,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 0,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 0,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 0,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 1,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 1,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 1,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 2,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 2,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "supervised",
+      "seed": 2,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 0,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 0,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 0,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 1,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 1,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 1,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 2,
+      "method": "gradcam",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 2,
+      "method": "gradcampp",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    },
+    {
+      "condition": "swav",
+      "seed": 2,
+      "method": "occlusion",
+      "num_images": 200,
+      "expected_images": 200,
+      "complete": true
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

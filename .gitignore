@@ -12,6 +12,7 @@ wheels/
 
 artifacts/checkpoints/
 artifacts/splits/
+artifacts/saliency/
 
 notebooks/.ipynb_checkpoints
 AGENTS.md
