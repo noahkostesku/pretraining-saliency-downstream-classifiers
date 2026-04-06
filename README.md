@@ -33,18 +33,16 @@ Please check the Process Overview section below for more details.
 
 Training took ~20 hours on a CPU. To speed up training, a GPU setup was used and is recommended if you intend to use our training pipeline to rerproduce and train models.
 
-For reproducing our analysis results, please unzip the `.zip` provided in `artifacts/bundles` with the following command:
+For reproducing our analysis results, please place the `.zip` of model weights inside `artifacts/bundles` with the following command:
 
 ```bash
-mkdir -p artifacts/bundles
-cd artifacts && zip -r bundles/seed0_probe_checkpoints.zip \
-  checkpoints/supervised/seed_0_probe_recipe_v1.pt \
-  checkpoints/moco/seed_0_probe_recipe_v1.pt \
-  checkpoints/swav/seed_0_probe_recipe_v1.pt \
-  checkpoints/random_init/seed_0_random_init_recipe_v1.pt
+mkdir -p artifacts/bundles # make the folder if it does not exist 
+mv seed0_probe_checkpoints.zip artifacts/bundles/
 ```
 
-After running the command above, you can run the dedicated code cell to reproduce our results quickly without running the full notebook in `analysis.ipynb`. Alternatively, you can refer to `notebooks/analysis.ipynb` for reproducing instructions and running relevant analysis code.
+Then in the notebook, run the corresponding code cells (please refer to notebook instructions) so checkpoints and split paths can be correctly configured on your local machine, such that weights land in `artifacts/checkpoints` and checkpoint and split paths are rewritten in probe-run JSONs.
+
+Please do **NOT** manually unzip the file inside `artifacts/bundles`. Refer to `notebooks/analysis.ipynb` for more instructions or the file tree below and docs folder for more information/help with where splits, weights, outputs and data go in the file tree to reproduce results for a manual setup.
 
 Please refer to the setup section below for setting up dependencies and running code in this project repo.
 
