@@ -74,7 +74,10 @@ def discover_stage4_runs(
     allowed_seeds = set(seeds) if seeds is not None else None
 
     runs: list[Stage4Run] = []
-    for metrics_path in sorted(metrics_root.glob("*/*.json")):
+    for metrics_path in sorted(
+        p for p in metrics_root.glob("*/*.json")
+        if not any(p.stem.endswith(s) for s in (".batch_losses", ".epoch_losses"))
+    ):
         payload = read_json(metrics_path)
         if not isinstance(payload, dict):
             raise ValueError(
