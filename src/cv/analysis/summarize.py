@@ -79,6 +79,9 @@ def summarize_seed_level_metrics(
         lambda: {
             "insertion_auc": [],
             "deletion_auc": [],
+            "norm_insertion_auc": [],
+            "norm_deletion_auc": [],
+            "target_logit_original": [],
             "drop_top10": [],
             "drop_top20": [],
             "flip_top10": [],
@@ -116,6 +119,13 @@ def summarize_seed_level_metrics(
         bucket["deletion_auc"].append(float(deletion_auc))
         bucket["image_ids"].add(image_id)
 
+        target_logit_original = row.get("target_logit_original")
+        if isinstance(target_logit_original, (int, float)) and float(target_logit_original) > 1e-8:
+            t = float(target_logit_original)
+            bucket["target_logit_original"].append(t)
+            bucket["norm_insertion_auc"].append(float(insertion_auc) / t)
+            bucket["norm_deletion_auc"].append(float(deletion_auc) / t)
+
         drop_top10 = row.get("drop_top10")
         drop_top20 = row.get("drop_top20")
         flip_top10 = row.get("flip_top10")
@@ -143,6 +153,21 @@ def summarize_seed_level_metrics(
                 "n_images": len(image_ids),
                 "mean_insertion_auc": float(np.mean(insertion_values)),
                 "mean_deletion_auc": float(np.mean(deletion_values)),
+                "mean_target_logit_original": (
+                    float(np.mean(bucket["target_logit_original"]))
+                    if bucket["target_logit_original"]
+                    else None
+                ),
+                "mean_norm_insertion_auc": (
+                    float(np.mean(bucket["norm_insertion_auc"]))
+                    if bucket["norm_insertion_auc"]
+                    else None
+                ),
+                "mean_norm_deletion_auc": (
+                    float(np.mean(bucket["norm_deletion_auc"]))
+                    if bucket["norm_deletion_auc"]
+                    else None
+                ),
                 "mean_drop_top10": (
                     float(np.mean(bucket["drop_top10"]))
                     if bucket["drop_top10"]
