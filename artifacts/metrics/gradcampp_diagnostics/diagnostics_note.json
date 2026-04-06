@@ -1,0 +1,67 @@
+{
+  "label": "mixed",
+  "note": "Grad-CAM++ diagnostics are mixed across conditions.",
+  "threshold": 0.01,
+  "n_primary_by_condition_seed": [
+    {
+      "condition": "moco",
+      "seed": 0,
+      "n_primary": 127
+    },
+    {
+      "condition": "moco",
+      "seed": 1,
+      "n_primary": 118
+    },
+    {
+      "condition": "moco",
+      "seed": 2,
+      "n_primary": 123
+    },
+    {
+      "condition": "random_init",
+      "seed": 0,
+      "n_primary": 127
+    },
+    {
+      "condition": "random_init",
+      "seed": 1,
+      "n_primary": 118
+    },
+    {
+      "condition": "random_init",
+      "seed": 2,
+      "n_primary": 123
+    },
+    {
+      "condition": "supervised",
+      "seed": 0,
+      "n_primary": 127
+    },
+    {
+      "condition": "supervised",
+      "seed": 1,
+      "n_primary": 118
+    },
+    {
+      "condition": "supervised",
+      "seed": 2,
+      "n_primary": 123
+    },
+    {
+      "condition": "swav",
+      "seed": 0,
+      "n_primary": 127
+    },
+    {
+      "condition": "swav",
+      "seed": 1,
+      "n_primary": 118
+    },
+    {
+      "condition": "swav",
+      "seed": 2,
+      "n_primary": 123
+    }
+  ]
+}

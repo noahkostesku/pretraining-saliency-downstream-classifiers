@@ -1,0 +1,13 @@
+condition,seed,slice,method_a,method_b,n_images,mean_delta_insertion_auc,mean_delta_deletion_auc
+moco,0,primary,gradcam,gradcampp,127,-0.0075154872275398285,0.004875238725727517
+moco,1,primary,gradcam,gradcampp,118,-0.007310728194423018,0.003929865515884561
+moco,2,primary,gradcam,gradcampp,123,-0.007877316077775618,0.004895681756912965
+random_init,0,primary,gradcam,gradcampp,127,-0.005393613028014631,0.005260605744832437
+random_init,1,primary,gradcam,gradcampp,118,-0.010805061730842459,0.015941499248907982
+random_init,2,primary,gradcam,gradcampp,123,-0.01145266368870539,0.009991162939288431
+supervised,0,primary,gradcam,gradcampp,127,-0.010528512247700053,0.017765135466386174
+supervised,1,primary,gradcam,gradcampp,118,-0.00933060468609657,0.0137754016424632
+supervised,2,primary,gradcam,gradcampp,123,-0.012217266545827285,0.018330296754321445
+swav,0,primary,gradcam,gradcampp,127,-0.0542381261001569,0.09286924276104175
+swav,1,primary,gradcam,gradcampp,118,-0.049921605834491324,0.09060311282161754
+swav,2,primary,gradcam,gradcampp,123,-0.04443038623108765,0.08239742052645355

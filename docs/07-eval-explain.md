@@ -19,7 +19,7 @@ These metrics evaluate faithfulness to model behavior under the chosen perturbat
 
 The following choices must be fixed and reused across all conditions:
 
-- target score: logit of the class predicted on the original unmodified image
+- target score: softmax probability of the class predicted on the original unmodified image
 - evaluation image size: `224 x 224`
 - masking baseline: a Gaussian-blurred version of the same resized image
 - patch resolution: `16 x 16` patches with `stride=16`

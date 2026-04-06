@@ -114,7 +114,7 @@ def _score_target_logits_for_states(
     with torch.no_grad():
         for start in range(0, len(states), eval_batch_size):
             end = min(start + eval_batch_size, len(states))
-            batch = torch.stack(states[start:end], dim=0).to(device)
+            batch = torch.stack(states[start:end], dim=0).to(device, non_blocking=True)
             logits = model(batch)
             if logits.ndim != 2:
                 raise ValueError(
@@ -129,7 +129,8 @@ def _score_target_logits_for_states(
                 dtype=torch.long,
             )
             batch_indices = torch.arange(logits.shape[0], device=logits.device)
-            target_scores = logits[batch_indices, target_classes]
+            probs = torch.softmax(logits, dim=1)
+            target_scores = probs[batch_indices, target_classes]
             predicted_classes = logits.argmax(dim=1)
 
             target_scores_chunks.append(target_scores.detach().cpu().numpy())
@@ -206,23 +207,23 @@ def run_insertion_deletion(
     )
 
     torch_device = _resolve_device(model, device)
-    image_cpu = image.detach().cpu().float()
-    baseline_cpu = gaussian_blur(
-        image_cpu,
+    image_dev = image.detach().to(torch_device).float()
+    baseline_dev = gaussian_blur(
+        image_dev,
         kernel_size=[blur_kernel_size, blur_kernel_size],
         sigma=[blur_sigma, blur_sigma],
     )
 
     insertion_states = _build_perturbation_states(
-        image=image_cpu,
-        baseline=baseline_cpu,
+        image=image_dev,
+        baseline=baseline_dev,
         ranked_patch_ids=ranked_patch_ids,
         patch_slices=patch_slices,
         mode="insertion",
     )
     deletion_states = _build_perturbation_states(
-        image=image_cpu,
-        baseline=baseline_cpu,
+        image=image_dev,
+        baseline=baseline_dev,
         ranked_patch_ids=ranked_patch_ids,
         patch_slices=patch_slices,
         mode="deletion",
