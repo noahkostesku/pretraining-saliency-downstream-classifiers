@@ -16,19 +16,20 @@ We aim to provide findings on the following:
 - whether higher downstream accuracy coincides with more faithful or more object-centered explanations
 - whether the learned representation appears more or less useful through the behavior of the downstream model
 
-## Setup
+We carry out 8 stages in our processes to complete end-to-end training and analysis of our results:
 
-The [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager is needed for running this project. Run these from repo root after environment setup:
+1. Load and prepare encoders 
+2. Make splits 
+3. Single run training for verifying architectural soundness
+4. Linear probe training 
+5. Generate saliency maps/explanations 
+6. Saliency quality checks 
+7. Explanability evaluations/analysis 
+8. GradCAM++ diagnostics 
 
-```bash
-uv venv # make a virtual environment  
-source .venv/bin/activate # activate the environment 
-uv sync # install packages 
-```
+Please check the Process Overview section below for more details.
 
-**IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
-
-### Notes for reproducing
+## Notes for reproducing
 
 Training took ~20 hours on a CPU. To speed up training, a GPU setup was used and is recommended if you intend to use our training pipeline to rerproduce and train models.
 
@@ -44,6 +45,29 @@ cd artifacts && zip -r bundles/seed0_probe_checkpoints.zip \
 ```
 
 After running the command above, you can run the dedicated code cell to reproduce our results quickly without running the full notebook in `analysis.ipynb`. Alternatively, you can refer to `notebooks/analysis.ipynb` for reproducing instructions and running relevant analysis code.
+
+Please refer to the setup section below for setting up dependencies and running code in this project repo.
+
+## Setup
+
+The [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager is needed for running this project. Run these from repo root after environment setup:
+
+```bash
+uv venv # make a virtual environment  
+source .venv/bin/activate # activate the environment 
+uv sync # install packages 
+```
+
+For running notebooks, please activate the environment in the project root, then run the below:
+
+```bash
+cd notebooks # navigate to the notebooks directory
+jupyter notebook # run jupyter notebook to launch notebooks
+```
+
+There is notebook code for both training and analysis and CLI for only training. For running CLIs for training, please refer to below.
+
+**IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
 
 # Project Structure 
 
@@ -137,16 +161,16 @@ cv/
 │   └── external/                          # Optional external checkpoint files
 ```
 
-## Instructions for Running via CLI 
+# Training via CLI 
 
-### Full CLI flow 
+### Full CLI Flow 
 
 Training:
 
 ```bash
 uv run python scripts/prepare_encoders.py
 uv run python scripts/make_splits.py --download
-uv run python scripts/run_probe_grid.py --device cpu
+uv run python scripts/run_probe_grid.py --device cpu # specify cuda if not on cpu
 uv run python scripts/summarize_probe_results.py
 ```
 
@@ -154,7 +178,7 @@ Explainability:
 
 ```bash
 uv run python scripts/export_eval_subset.py
-uv run python scripts/generate_explanations.py --conditions supervised moco swav random_init --seeds 0 1 2 --methods gradcam gradcampp occlusion --device cpu
+uv run python scripts/generate_explanations.py --conditions supervised moco swav random_init --seeds 0 1 2 --methods gradcam gradcampp occlusion --device cpu # specify cuda if not on cpu
 uv run python scripts/qc_explanations.py --conditions supervised moco swav random_init --seeds 0 1 2 --methods gradcam gradcampp occlusion
 ```
 
@@ -292,7 +316,11 @@ Output:
 
 After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablation fine tuning, and GradCAM++. Alternatively, you can also run `notebooks/run.ipynb` for all of the steps above instead of using the CLI. 
 
-## Stage 1 - Encoder preparation
+# Process Overview 
+
+This section describes the order of the processes we do for end-to-end training and analysis.
+
+## Stage 1: Encoder preparation
 
 - `src/cv/encoders/registry.py`:
     - Interface for loading encoders, maps encoder type loaded to the correct function for loading the models
@@ -312,7 +340,7 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 - `scripts/inspect_encoders.py`:
     - one-shot shape and loading sanity checks
 
-## Stages 2-3 - Data splits, Shared downstream setup config 
+## Stages 2-3: Data splits, Shared downstream setup config 
 
 - `src/cv/data/stl10.py`:
     - Loads STL-10 splits, validates the split names, prepares for label extraction and builds the fixed index train/val/test datasets with shared transforms
@@ -333,7 +361,7 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 - `scripts/make_splits.py` 
     - for re-using fixed splits 
 
-## Stage 4 - Linear Probe Training 
+## Stage 4: Linear Probe Training 
 
 - `src/cv/models/linear_probe.py`
     - Linear probe model definition
@@ -350,7 +378,7 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 - `scripts/summarize_probe_results.py` 
     - util helper for writing summary for training results
 
-## Stages 5-6 - Explainability generation
+## Stages 5-6: Explainability (saliency) generation
 
 - `src/cv/explain/targets.py`
     - predicted-class target score on original image and predcited-class target helper functions 
@@ -373,7 +401,7 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 - `scripts/qc_explanations.py`
     - CLI for running Stage-6 checks and saving quality check report
 
-## Stage 7 - Explanation evaluation
+## Stage 7: Explanation evaluation
 
 - `src/cv/analysis/curves.py`:
     - builds deterministic image-space patch grids (`16x16`, `stride=16`) and perturbation x-axis fractions
@@ -393,21 +421,7 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
 - `notebooks/analysis.ipynb`:
     - orchestrates Stage-7 preflight, per-image IAUC/DAUC evaluation, paired stats, and saved figures/tables
 
-## Stage 8 - Optional limited fine-tuning ablation
-
-- `src/cv/train/trainer.py`:
-    - adds fixed Stage-8 recipe `ablation_layer4_v1` (`seed=0`, `30` epochs, AdamW)
-    - allows pretrained conditions (`supervised`, `moco`, `swav`) to run ablation training modes
-    - builds ablation optimizer param groups with separate LRs (`layer4=1e-4`, `classifier=1e-3`)
-    - adds sanity checks so only `layer4` + classifier are trainable/updated
-- `src/cv/train/__init__.py`:
-    - exports `ABLATION_LAYER4_RECIPE_V1` for external use
-- `notebooks/analysis.ipynb`:
-    - runs optional Stage-8 ablation generation via `train_one_run(...)`
-    - compares ablation vs frozen-probe baseline for seed 0
-    - writes dedicated Stage-8 summaries under `artifacts/metrics/ablation_layer4/` while keeping run metrics in `artifacts/metrics/probe_runs/`
-
-## Stage 9 - Mandatory Grad-CAM++ diagnostics
+## Stage 8: Grad-CAM++ diagnostics
 
 - `src/cv/analysis/summarize.py`:
     - computes method deltas (`Grad-CAM++ - Grad-CAM`) on matched primary-slice image keys
@@ -421,7 +435,6 @@ After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablatio
         - `artifacts/metrics/gradcampp_diagnostics/diagnostics_note.json`
     - generates required qualitative side-by-side panel under `artifacts/saliency/gradcampp_diagnostics/main_panel/`
     - includes a markdown appendix plan (not yet implemented) for `per_class_deltas.csv` and `error_slice_deltas.csv`
-
 
 # Notes 
 
