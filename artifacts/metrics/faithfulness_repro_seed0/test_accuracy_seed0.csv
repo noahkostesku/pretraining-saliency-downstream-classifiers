@@ -1,0 +1,5 @@
+condition,seed,test_acc
+moco,0,0.944875
+random_init,0,0.675875
+supervised,0,0.97775
+swav,0,0.969125
