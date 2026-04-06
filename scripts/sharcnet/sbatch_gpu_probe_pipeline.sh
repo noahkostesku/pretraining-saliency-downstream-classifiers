@@ -17,7 +17,11 @@
 #
 # Load modules or activate the environment before training if your site requires it
 # (example, adjust to your cluster docs):
-#   - module load StdEnv/2023 cuda cudnn python/3.11
+#   - module purge && module load StdEnv/2023 cuda/12.2 cudnn/8.9 python/3.11
+# 
+#Load virtual environment
+# (example, adjust to your cluster docs):
+#   - source .venv/bin/activate (pip install --no-index <dependencies> on a login node)
 #
 # Optional environment overrides (export before sbatch, or use #SBATCH --export=ALL):
 #  - STRICT_CANONICAL=1 -> match docs/requirements.md Stage 4 (num_workers=0, no pin_memory)
