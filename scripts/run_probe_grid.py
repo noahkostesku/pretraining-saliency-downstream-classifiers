@@ -113,6 +113,19 @@ def _parse_args() -> argparse.Namespace:
         help="Skip one-batch cross-condition output-shape consistency check.",
     )
     parser.add_argument(
+        "--no-amp",
+        action="store_true",
+        help="Disable CUDA automatic mixed precision (train/eval in fp32 on GPU).",
+    )
+    parser.add_argument(
+        "--no-strict-repro",
+        action="store_true",
+        help=(
+            "Disable strict reproducibility: allow cudnn.benchmark and CUDA AMP for speed "
+            "(not bitwise reproducible)."
+        ),
+    )
+    parser.add_argument(
         "--run-table-json",
         type=Path,
         default=ARTIFACTS_ROOT / "metrics" / "probe_runs" / "run_table.json",
@@ -235,6 +248,8 @@ def main() -> None:
                 moco_checkpoint_path=args.moco_checkpoint,
                 swav_checkpoint_path=args.swav_checkpoint,
                 sanity_checks=not args.skip_sanity_checks,
+                use_amp=not args.no_amp,
+                strict_reproducibility=not args.no_strict_repro,
             )
             result = train_one_run(config)
             run_rows.append(build_run_table_row(result))

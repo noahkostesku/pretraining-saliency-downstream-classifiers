@@ -202,6 +202,8 @@ Flags:
 - `--device`, `--num-workers`, `--no-pin-memory`, `--download`
 - `--moco-checkpoint`, `--swav-checkpoint`, `--allow-remote-download`
 - `--skip-sanity-checks` to skip first-batch gradient/BN checks.
+- `--no-amp` to force fp32 on GPU (only applies when not in strict reproducibility mode).
+- `--no-strict-repro` to allow `cudnn.benchmark` and CUDA AMP for speed (less reproducible).
 
 ### 4. Run full training 
 
@@ -217,7 +219,7 @@ Flags:
 - `--probe-recipe-id <id>` and `--random-init-recipe-id <id>`
 - `--skip-cross-condition-check` to skip one-batch shape/class consistency check.
 - `--run-table-json <path>` and `--run-table-csv <path>` to set run table outputs.
-- Also supports loader/checkpoint flags from single-run script.
+- Also supports loader/checkpoint flags from single-run script (including `--no-amp`, `--no-strict-repro`).
 
 ### 5. Summarize Run Metrics 
 
