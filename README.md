@@ -160,6 +160,7 @@ cv/
 │   ├── export_eval_subset.py              # sample and save the fixed explanation evaluation subset
 │   ├── generate_explanations.py           # generate Grad-CAM/Grad-CAM++/Occlusion maps for saved checkpoints
 │   ├── qc_explanations.py                 # run Stage-6 saliency map QC checks
+│   ├── compute_wilcoxon_stats.py          # paired Wilcoxon tests on primary Grad-CAM IAUC
 │   └── sharcnet/
 │       └── sbatch_gpu_probe_pipeline.sh   # Bash script for GPU run 
 ├── notebooks/
@@ -199,6 +200,7 @@ cv/
 │       │   ├── seed_level_scores.csv # seed-level averaged faithfulness metrics table
 │       │   ├── condition_summary.csv # encoder-level mean and std faithfulness
 │       │   ├── paired_stats_primary.csv # Primary-slice paired bootstrap/permutation stats table 
+│       │   ├── wilcoxon_paired_stats_primary.csv # paired Wilcoxon stats on primary Grad-CAM IAUC
 │       │   └── figures/
 │       │       ├── primary_auc_by_condition_method.png # primary-slice AUC nar graph by method 
 │       │       ├── accuracy_vs_faithfulness.png # test accuracy vs insertion AUC scatter plot 
