@@ -4,7 +4,7 @@
 
 "Do different encoders produce representations that support better downstream classification, and do the resulting end-to-end decisions rely on behaviorally important and visually plausible image regions?"
 
-We aim to determine whether we can I compare how useful different learned representations are for downstream classification, and whether the resulting decisions are grounded in faithful and visually plausible image regions?
+We aim to determine whether we can I compare how useful different learned representations are for downstream classification, and whether the resulting decisions are grounded in faithful and visually plausible image regions.
 
 We evaluate whether different pretrained encoders yield representations that transfer well to STL-10 under linear probing, and whether the resulting downstream decisions are supported by faithful and visually plausible saliency regions
 
@@ -25,7 +25,8 @@ We carry out 8 stages in our process to complete end-to-end training and analysi
 5. Generate saliency maps/explanations 
 6. Saliency quality checks 
 7. Explanability evaluations/analysis 
-8. GradCAM++ diagnostics 
+8. Run paired Wilcoxon signed-rank tests on Grad-CAM primary-slice insertion AUCs
+9. GradCAM++ diagnostics 
 
 Please check the Process Overview section below for more details.
 
@@ -44,7 +45,7 @@ Then in the notebook, run the corresponding code cells (please refer to notebook
 
 Please do **NOT** manually unzip the file inside `artifacts/bundles`. Refer to `notebooks/analysis.ipynb` for more instructions or the file tree below and docs folder for more information/help with where splits, weights, outputs and data go in the file tree to reproduce results for a manual setup.
 
-Please refer to the setup section below for setting up dependencies and running code in this project repo.
+Please refer to the setup section below for setting up dependencies and running code in this project repo, and the Notebook Usage or the CLI Flow sections below for a full run or usage of the project.
 
 ## Setup
 
@@ -63,7 +64,7 @@ cd notebooks # navigate to the notebooks directory
 jupyter notebook # run jupyter notebook to launch notebooks
 ```
 
-There is notebook code for both training and analysis and CLI for only training. For running CLIs for training, please refer to below.
+We used notebook code for both training and analysis and CLI for only training, with the sole exception of the Wilcoxon paired significance tests (stage 8 in process overview section below), which requires running via CLI to output a CSV. For running CLIs for training, please refer to below.
 
 **IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
 
@@ -203,9 +204,17 @@ For more details on the outputs produced and what they mean, please refer to the
 
 Model checkpoints are stored in `artifacts/checkpoints`, which is gitignored.
 
-# Training via CLI 
+# Usage 
 
-### Full CLI Flow 
+## Using Notebooks
+
+1. Activate the virtual environment and launch Jupyter Notebook according to the instructions above
+2. Run `notebooks/run.iypnb`, then run `notebooks/analysis.ipynb`. Refer to instructions inside it.
+3. Then run `scripts/compute_wilcoxon_stats.py` in the project root. Please refer to usage and command for running this standalone script below in subsection 9 of Train via CLI. 
+
+## Train via CLI
+
+### Full CLI Flow
 
 Training:
 
@@ -358,6 +367,18 @@ Output:
 
 After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablation fine tuning, and GradCAM++. Alternatively, you can also run `notebooks/run.ipynb` for all of the steps above instead of using the CLI. 
 
+### 9. Run Wilcoxon Tests (standalone)
+
+After permutation tests have been run, run Wilcoxon signed-rank tests on Grad-CAM primary-slice insertion AUCs. We compare 6 condition pairs across 3 seeds (18 tests total) and writes to `artifacts/metrics/faithfulness/wilcoxon_paired_stats_primary.csv` the following columns: `condition_a`, `condition_b`, `seed`, `n_images`, `wilcoxon_statistic`, `wilcoxon_pvalue`.
+
+Note that there is no notebook code for this standalone test and must be run via CLI &**after** the analysis notebook (stage 7 permutation).
+
+From the repo root, run:
+
+```bash
+uv run python scripts/compute_wilcoxon_stats.py 
+```
+
 # Process Overview 
 
 This section describes the order of the processes we do for end-to-end training and analysis.
@@ -463,7 +484,13 @@ This section describes the order of the processes we do for end-to-end training 
 - `notebooks/analysis.ipynb`:
     - orchestrates Stage-7 preflight, per-image IAUC/DAUC evaluation, paired stats, and saved figures/tables
 
-## Stage 8: Grad-CAM++ diagnostics
+## Stage 8: Wilcoxon Tests on Insertion AUC Primary Slice 
+
+- `scripts/compute_wilcoxon_stats.py`
+    - loads per-image scores from `artifacts/metrics/faithfulness/faithfulness/per_image_scores.csv`; builds paired vectors by matching common test_image_id per condition pair/seed and computes wilcoxon test values
+    - outputs to `artifacts/metrics/faithfulness/wilcoxon_paired_stats_primary.csv`
+
+## Stage 9: Grad-CAM++ diagnostics
 
 - `src/cv/analysis/summarize.py`:
     - computes method deltas (`Grad-CAM++ - Grad-CAM`) on matched primary-slice image keys
