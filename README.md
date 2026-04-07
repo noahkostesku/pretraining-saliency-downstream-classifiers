@@ -1,5 +1,27 @@
 # CS 4452 final project 
 
+## Table of Contents
+
+- [Research Objective](#research-objective)
+- [Notes for reproducing](#notes-for-reproducing)
+- [Setup](#setup)
+- [Project Structure](#project-structure)
+- [Usage](#usage)
+  - [Using Notebooks](#using-notebooks)
+  - [Train via CLI](#train-via-cli)
+    - [Full CLI Flow](#full-cli-flow)
+    - [9. Run Wilcoxon Tests (standalone)](#9-run-wilcoxon-tests-standalone)
+- [Process Overview](#process-overview)
+  - [Stage 1: Encoder preparation](#stage-1-encoder-preparation)
+  - [Stages 2-3: Data splits, Shared downstream setup config](#stages-2-3-data-splits-shared-downstream-setup-config)
+  - [Stage 4: Linear Probe Training](#stage-4-linear-probe-training)
+  - [Stages 5-6: Explainability (saliency) generation](#stages-5-6-explainability-saliency-generation)
+  - [Stage 7: Explanation evaluation](#stage-7-explanation-evaluation)
+  - [Stage 8: Wilcoxon Tests on Insertion AUC Primary Slice](#stage-8-wilcoxon-tests-on-insertion-auc-primary-slice)
+  - [Stage 9: Grad-CAM++ diagnostics](#stage-9-grad-cam-diagnostics)
+- [Notes](#notes)
+- [Potential Next Steps](#potential-next-steps)
+
 ## Research Objective 
 
 "Do different encoders produce representations that support better downstream classification, and do the resulting end-to-end decisions rely on behaviorally important and visually plausible image regions?"
@@ -16,7 +38,7 @@ We aim to provide findings on the following:
 - whether higher downstream accuracy coincides with more faithful or more object-centered explanations
 - whether the learned representation appears more or less useful through the behavior of the downstream model
 
-We carry out 8 stages in our process to complete end-to-end training and analysis of our results:
+We carry out 9 stages in our process to complete end-to-end training and analysis of our results:
 
 1. Load and prepare encoders 
 2. Make splits 
@@ -28,7 +50,7 @@ We carry out 8 stages in our process to complete end-to-end training and analysi
 8. Run paired Wilcoxon signed-rank tests on Grad-CAM primary-slice insertion AUCs
 9. GradCAM++ diagnostics 
 
-Please check the Process Overview section below for more details.
+Please check the [Process Overview](#process-overview) section for more details.
 
 ## Notes for reproducing
 
@@ -41,11 +63,11 @@ mkdir -p artifacts/bundles # make the folder if it does not exist
 mv seed0_probe_checkpoints.zip artifacts/bundles/
 ```
 
-Then in the notebook, run the corresponding code cells (please refer to notebook instructions) so checkpoints and split paths can be correctly configured on your local machine, such that weights land in `artifacts/checkpoints` and checkpoint and split paths are rewritten in probe-run JSONs.
+Then in the notebook, run the corresponding code cells in [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb) so checkpoints and split paths can be correctly configured on your local machine, such that weights land in `artifacts/checkpoints` and checkpoint and split paths are rewritten in probe-run JSONs.
 
-Please do **NOT** manually unzip the file inside `artifacts/bundles`. Refer to `notebooks/analysis.ipynb` for more instructions or the file tree below and docs folder for more information/help with where splits, weights, outputs and data go in the file tree to reproduce results for a manual setup.
+Please do **NOT** manually unzip the file inside `artifacts/bundles`. Refer to [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb) for notebook instructions, [Project Structure](#project-structure) for file locations, and docs [`docs/training-specification.md`](docs/training-specification.md) and [`docs/saliency.md`](docs/saliency.md) for details on outputs and artifacts.
 
-Please refer to the setup section below for setting up dependencies and running code in this project repo, and the Notebook Usage or the CLI Flow sections below for a full run or usage of the project.
+Please refer to [Setup](#setup) for dependencies, then [Using Notebooks](#using-notebooks) or [Full CLI Flow](#full-cli-flow) for end-to-end project usage.
 
 ## Setup
 
@@ -64,7 +86,7 @@ cd notebooks # navigate to the notebooks directory
 jupyter notebook # run jupyter notebook to launch notebooks
 ```
 
-We used notebook code for both training and analysis and CLI for only training, with the sole exception of the Wilcoxon paired significance tests (stage 8 in process overview section below), which requires running via CLI to output a CSV. For running CLIs for training, please refer to below.
+We used notebook code for both training and analysis and CLI for only training, with the sole exception of the Wilcoxon paired significance tests ([Stage 8](#stage-8-wilcoxon-tests-on-insertion-auc-primary-slice)), which require running via CLI to output a CSV. For CLI commands, see [Train via CLI](#train-via-cli).
 
 **IMPORTANT**: before running training, make sure to save the results (loss curves, csv and JSON for the training runs) which have been committed to GitHub for the run notebook to work before re-running or reproducing. The model weights are stored in `artifacts/checkpoints/`, which is not committed.
 
@@ -77,7 +99,7 @@ cv/
 ├── uv.lock                                
 ├── docs/
 │   ├── training-specification.md        
-│   └── saliency-analysis-deep-dive.md     
+│   └── saliency.md                      
 ├── src/
 │   └── cv/
 │       ├── __init__.py                    
@@ -200,7 +222,7 @@ cv/
 │   └── external/                          # Optional external checkpoint files
 ```
 
-For more details on the outputs produced and what they mean, please refer to the notebook's explanations and the docs: `docs/training-specification.md` for training details, and `docs/saliency.md` for saliency methods done and more details on the outputs produced in `artifacts/metrics` shown above.
+For more details on outputs and interpretation, see [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb), [`docs/training-specification.md`](docs/training-specification.md), and [`docs/saliency.md`](docs/saliency.md).
 
 Model checkpoints are stored in `artifacts/checkpoints`, which is gitignored.
 
@@ -208,9 +230,9 @@ Model checkpoints are stored in `artifacts/checkpoints`, which is gitignored.
 
 ## Using Notebooks
 
-1. Activate the virtual environment and launch Jupyter Notebook according to the instructions above
-2. Run `notebooks/run.iypnb`, then run `notebooks/analysis.ipynb`. Refer to instructions inside it.
-3. Then run `scripts/compute_wilcoxon_stats.py` in the project root. Please refer to usage and command for running this standalone script below in subsection 9 of Train via CLI. 
+1. Activate the virtual environment and launch Jupyter Notebook using [Setup](#setup).
+2. Run [`notebooks/run.ipynb`](notebooks/run.ipynb), then [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb).
+3. Then run `scripts/compute_wilcoxon_stats.py` in the project root; command details are in [9. Run Wilcoxon Tests (standalone)](#9-run-wilcoxon-tests-standalone).
 
 ## Train via CLI
 
@@ -365,13 +387,13 @@ Flags:
 Output:
 - `artifacts/metrics/saliency/qc_report.json`
 
-After this, please run `notebooks/analysis.ipynb` for occlusion methods, ablation fine tuning, and GradCAM++. Alternatively, you can also run `notebooks/run.ipynb` for all of the steps above instead of using the CLI. 
+After this, run [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb) for downstream explainability analysis and Grad-CAM++ diagnostics. Alternatively, you can run [`notebooks/run.ipynb`](notebooks/run.ipynb) for the end-to-end pipeline.
 
 ### 9. Run Wilcoxon Tests (standalone)
 
 After permutation tests have been run, run Wilcoxon signed-rank tests on Grad-CAM primary-slice insertion AUCs. We compare 6 condition pairs across 3 seeds (18 tests total) and writes to `artifacts/metrics/faithfulness/wilcoxon_paired_stats_primary.csv` the following columns: `condition_a`, `condition_b`, `seed`, `n_images`, `wilcoxon_statistic`, `wilcoxon_pvalue`.
 
-Note that there is no notebook code for this standalone test and must be run via CLI &**after** the analysis notebook (stage 7 permutation).
+Note that there is no notebook code for this standalone test and it must be run via CLI **after** completing Stage-7 permutation analysis in [`notebooks/analysis.ipynb`](notebooks/analysis.ipynb) and [Stage 7: Explanation evaluation](#stage-7-explanation-evaluation).
 
 From the repo root, run:
 
@@ -517,4 +539,3 @@ This section describes the order of the processes we do for end-to-end training 
 Investigate semantic meaning of encoders: “What does each encoder embedding dimension mean, semantically, and do they provide meaningful signals for downstream classification tasks?”
 
 Using concept probing, activation maximization, nearest-neighbor retrieval in feature space, feature visualization, concept alignment or TCAV-style analysis, which is out of scope for the current project. 
-
